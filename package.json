@@ -1,0 +1,39 @@
+{
+  "name": "rubromap",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^26.0.0",
+    "electron-builder": "^24.6.0",
+    "vite": "^5.4.0"
+  },
+  "build": {
+    "appId": "com.rubromap.tracker",
+    "productName": "RubroMap",
+    "files": [
+      "dist/**/*",
+      "src/main.js",
+      "package.json"
+    ],
+    "directories": {
+      "output": "out"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
