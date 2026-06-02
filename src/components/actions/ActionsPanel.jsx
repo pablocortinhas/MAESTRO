@@ -3,7 +3,7 @@ import { SECTORS } from "../../constants/sectors";
 import { C }       from "../../constants/colors";
 import { lBtn }    from "../../utils/styles";
 
-const LS_LAYOUT    = "rubromap_action_layout_v2";
+const LS_LAYOUT    = "rubromap_action_layout_v3";
 const LS_SHORTCUTS = "rubromap_action_shortcuts";
 
 const COLOR_OPTS = [
@@ -11,8 +11,14 @@ const COLOR_OPTS = [
 ];
 const NEG_COLORS = new Set(["#DC2626","#CA8A04","#E8001C","#C65100"]);
 const SHORT = {
-  "FINALIZAÇÃO":"FINALIZ.","1×1 OFENSIVO":"1×1 OF.",
-  "1×1 DEFENSIVO":"1×1 DEF.","AÇÃO GOLEIRO":"GOLEIRO",
+  "RECUPERAÇÃO DA POSSE":"RECUPER.",
+  "BLOQUEIO DE FINALIZAÇÃO":"BLOQUEIO",
+  "FINALIZAÇÃO":"FINALIZ.",
+  "1×1 OFENSIVO":"1×1 OF.",
+  "1×1 DEFENSIVO":"1×1 DEF.",
+  "AÇÃO SOB PRESSÃO":"SOB PRESS.",
+  "PASSE CHAVE":"P. CHAVE",
+  "PASSE LONGO":"P. LONGO",
 };
 const sl = (p, sub) => { const s = SHORT[p] || p; return sub ? `${s} ${sub}` : s; };
 
@@ -171,25 +177,26 @@ export default function ActionsPanel({ selZone, selAct, setSelAct, register }) {
           else setSelAct(btn.id === selAct ? null : btn.id);
         }}
         style={{
-          padding:"6px", width:"100%", aspectRatio:"1", position:"relative",
+          padding:"3px 4px", width:"100%", position:"relative",
           background: sel ? ac : ac + "15",
           border: `2px solid ${sel ? ac : ac + "55"}`,
-          borderRadius:10, cursor:"pointer", transition:"all .1s",
+          borderRadius:6, cursor:"pointer", transition:"all .1s",
           display:"flex", alignItems:"center", justifyContent:"center",
+          minHeight:28,
         }}
       >
         {sk && (
           <span style={{
-            position:"absolute", top:2, right:3,
-            fontSize:8, fontFamily:"monospace",
+            position:"absolute", top:1, right:2,
+            fontSize:7, fontFamily:"monospace",
             color: sel ? "rgba(255,255,255,.8)" : ac+"CC",
             background: sel ? "rgba(0,0,0,.3)" : ac+"18",
-            borderRadius:2, padding:"0 3px", lineHeight:"13px",
+            borderRadius:2, padding:"0 2px", lineHeight:"12px",
           }}>
             {sk}
           </span>
         )}
-        <span style={{ fontFamily:"'Bebas Neue'", fontSize:13, letterSpacing:.4, color: sel ? "#FFF" : ac, textAlign:"center", lineHeight:1.2, wordBreak:"break-word" }}>
+        <span style={{ fontFamily:"'Bebas Neue'", fontSize:11, letterSpacing:.3, color: sel ? "#FFF" : ac, textAlign:"center", lineHeight:1.2, wordBreak:"break-word" }}>
           {btn.label}
         </span>
       </button>
@@ -203,11 +210,11 @@ export default function ActionsPanel({ selZone, selAct, setSelAct, register }) {
           {editMode ? "CONCLUIR" : "EDITAR BOTÕES"}
         </button>
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5, alignItems:"start" }}>
-        <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, alignItems:"start" }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
           {col0.map(renderBtn)}
         </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
           {col1.map(renderBtn)}
         </div>
       </div>
