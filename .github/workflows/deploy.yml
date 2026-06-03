@@ -31,7 +31,7 @@ jobs:
 
       - run: npm run build
         env:
-          GITHUB_ACTIONS: true
+          VITE_BASE_PATH: /rubromap/
 
       - uses: actions/configure-pages@v4
 

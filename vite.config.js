@@ -6,7 +6,7 @@ const { version } = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.GITHUB_ACTIONS ? "/rubromap/" : "./",
+  base: process.env.VITE_BASE_PATH || "./",
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
