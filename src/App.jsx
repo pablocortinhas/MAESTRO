@@ -187,6 +187,7 @@ export default function RubroMap(){
         <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
           <img src={"data:image/png;base64,"+LOGO_B64} style={{width:26,height:26,objectFit:"contain"}} alt="CRF"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:4,color:"#FFF",lineHeight:1}}>RUBROMAP</span>
+          <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:9,color:"#555",fontWeight:600,alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{__APP_VERSION__}</span>
         </div>
         <Div/>
         <div style={{flexShrink:0,position:"relative"}}>
