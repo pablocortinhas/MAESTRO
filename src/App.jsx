@@ -7,7 +7,7 @@ import { SQUADS as SQUADS_STATIC, CAT_LIST }   from "./constants/squads";
 import { LOGO_B64 }                            from "./assets/base64";
 import { fmt, getMeta, download }              from "./utils/format";
 import { initSt, initZSt, mkPlayers }          from "./utils/dataInit";
-import { lBtn }                                from "./utils/styles";
+import { lBtn, filtBtn }                       from "./utils/styles";
 import SoberCard       from "./components/common/SoberCard";
 import StatCard        from "./components/common/StatCard";
 import FieldMap        from "./components/field/FieldMap";
@@ -109,7 +109,10 @@ function RubroMap(){
   const [toast,   setToast]   = useState(null);
   const [possMode,setPossMode]= useState("pause");
   const [possTime,setPossTime]= useState({fla:0,adv:0});
+  const [heatFilt,setHeatFilt]= useState("all");
+  const [playerFilt,setPlayerFilt]= useState(null);
   const [editActMode,setEditActMode]=useState(false);
+  const [editTool,setEditTool]=useState(null);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showCat, setShowCat] = useState(false);
   const [showPM,  setShowPM]  = useState(false);
@@ -423,13 +426,32 @@ function RubroMap(){
                 title="AÇÕES"
                 style={{flex:1,minHeight:0,overflow:"hidden"}}
                 headerRight={
-                  <button
-                    onClick={()=>setEditActMode(e=>!e)}
-                    style={{background:editActMode?"#E8001C":"transparent",border:`1px solid ${editActMode?"#E8001C":"#D4D4D4"}`,color:editActMode?"#FFF":"#6B7280",borderRadius:4,padding:"1px 8px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer"}}
-                  >{editActMode?"CONCLUIR":"EDITAR"}</button>
+                  <div style={{display:"flex",gap:3,alignItems:"center"}}>
+                    {editActMode&&[
+                      {id:"cor",label:"COR"},
+                      {id:"nome",label:"NOME"},
+                      {id:"mover",label:"MOVER"},
+                      {id:"atalho",label:"ATALHO"},
+                    ].map(t=>(
+                      <button key={t.id}
+                        onClick={()=>setEditTool(e=>e===t.id?null:t.id)}
+                        style={{
+                          background:editTool===t.id?C.red:"transparent",
+                          border:`1px solid ${editTool===t.id?C.red:"#D4D4D4"}`,
+                          color:editTool===t.id?"#FFF":"#6B7280",
+                          borderRadius:4,padding:"1px 8px",
+                          fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",
+                        }}
+                      >{t.label}</button>
+                    ))}
+                    <button
+                      onClick={()=>{setEditActMode(e=>!e);if(editActMode)setEditTool(null);}}
+                      style={{background:editActMode?"#E8001C":"transparent",border:`1px solid ${editActMode?"#E8001C":"#D4D4D4"}`,color:editActMode?"#FFF":"#6B7280",borderRadius:4,padding:"1px 8px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer"}}
+                    >{editActMode?"CONCLUIR":"EDITAR"}</button>
+                  </div>
                 }
               >
-                <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} setEditMode={setEditActMode}/>
+                <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} editTool={editTool} setEditTool={setEditTool}/>
               </SoberCard>
 
               {/* Histórico — base */}
@@ -457,15 +479,50 @@ function RubroMap(){
           </div>
         )}
 
-        {view==="mapa"&&(
-          <div style={{flex:1,overflow:"hidden",display:"flex",minHeight:0}}>
-            <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"center"}}>
-              <SoberCard title="MAPA DE CALOR — TODAS AS AÇÕES" style={{width:"100%"}}>
-                <FieldMap hist={hist} filterAct="all"/>
+        {view==="mapa"&&(()=>{
+          const mapaPlayers=[...new Map(hist.filter(h=>h.playerId).map(h=>[h.playerId,{id:h.playerId,display:h.playerDisplay||h.player,num:h.num}])).values()];
+          const mapaHist=playerFilt?hist.filter(h=>h.playerId===playerFilt):hist;
+          const selPlayer=playerFilt?mapaPlayers.find(p=>p.id===playerFilt):null;
+          const chipBase={borderRadius:5,padding:"3px 9px",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,cursor:"pointer",border:"1px solid #D4D4D4",background:"#F5F5F5",color:C.txtM};
+          const chipSel={...chipBase,background:C.red,border:`1px solid ${C.red}`,color:"#FFF"};
+          return(
+          <div style={{flex:1,overflow:"hidden",display:"flex",gap:8,minHeight:0}}>
+            <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6,justifyContent:"center",alignItems:"center"}}>
+              <SoberCard title={"MAPA DE CALOR"+(heatFilt!=="all"?" · "+getMeta(heatFilt).label:"")+(selPlayer?" · "+selPlayer.display:"")} style={{width:"78%"}}>
+                <FieldMap hist={mapaHist} filterAct={heatFilt}/>
               </SoberCard>
+
+              {/* Abas de jogadores com ações registradas */}
+              {mapaPlayers.length>0&&(
+                <div style={{width:"78%",display:"flex",gap:4,flexWrap:"wrap",justifyContent:"flex-start"}}>
+                  <button onClick={()=>setPlayerFilt(null)} style={playerFilt===null?chipSel:chipBase}>TODOS</button>
+                  {mapaPlayers.map(p=>(
+                    <button key={p.id} onClick={()=>setPlayerFilt(p.id)} style={p.id===playerFilt?chipSel:chipBase}>
+                      {p.num?`#${p.num} `:""}{p.display}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+            <SoberCard title="FILTRAR" style={{width:220,flexShrink:0}} contentStyle={{overflowY:"auto"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                <button onClick={()=>setHeatFilt("all")} style={filtBtn(heatFilt==="all",C.gold)}>TODAS AS AÇÕES</button>
+                {SECTORS.map(s=>(
+                  <div key={s.id} style={{marginTop:5}}>
+                    <div style={{fontSize:9,color:s.color,letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:3,borderBottom:"1px solid #E0E0E0",paddingBottom:2}}>{s.label.toUpperCase()}</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                      {s.actions.map(a=>a.type==="single"
+                        ?<button key={a.id} onClick={()=>setHeatFilt(a.id)} style={filtBtn(heatFilt===a.id,s.color)}>{a.label}</button>
+                        :[<button key={a.posId} onClick={()=>setHeatFilt(a.posId)} style={filtBtn(heatFilt===a.posId,a.posColor||C.posL)}>{a.label}: {a.posLabel}</button>,
+                          <button key={a.negId} onClick={()=>setHeatFilt(a.negId)} style={filtBtn(heatFilt===a.negId,a.negColor||C.negL)}>{a.label}: {a.negLabel}</button>]
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SoberCard>
           </div>
-        )}
+        )})()}
 
         {view==="stats"&&(
           <div style={{flex:1,overflow:"auto"}}>
