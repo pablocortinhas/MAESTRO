@@ -1,35 +1,95 @@
-const ZONE_NAMES = [
-  /* row 0 */ "LE1","LE2","AE1","AE2","PE1","PE2",
-  /* row 1 */ "MDE1","MDE2","MCE1","MCE2","MOE1","MOE2",
-  /* row 2 */ "CD1","CD2","CC1","CC2","CO1","CO2",
-  /* row 3 */ "MDD1","MDD2","MCD1","MCD2","MOD1","MOD2",
-  /* row 4 */ "LD1","LD2","AD1","AD2","PD1","PD2",
-];
+/* ═══════════════════════════════════════════════════════════
+   ZONAS DO CAMPO — campo1.png
+   Baseado nas linhas pontilhadas visíveis na imagem.
 
-/* Portrait zones (5 rows × 6 cols = 30) */
-const FX1=0.029, FX2=0.970, FY1=0.044, FY2=0.956;
-const SX=(FX2-FX1)/6, SY=(FY2-FY1)/5;
+   PORTRAIT (imagem original 1019×1543):
+     Linhas verticais pontilhadas:  x ≈ 0.27  e  x ≈ 0.73
+     Linhas horizontais pontilhadas: y ≈ 0.17, 0.33, 0.50, 0.67, 0.83
+     → 3 corredores × 6 faixas de profundidade = 18 zonas
 
-export const ZONES_P=[];
-for(let r=0;r<5;r++) for(let c=0;c<6;c++){
-  ZONES_P.push({
-    id:r*6+c, row:r, col:c,
-    name:ZONE_NAMES[r*6+c],
-    x1:FX1+c*SX, x2:FX1+(c+1)*SX,
-    y1:FY1+r*SY, y2:FY1+(r+1)*SY,
-  });
+   LANDSCAPE (rotação 90°CW para exibição horizontal):
+     lx = 1 − py   (portrait y vira landscape x, invertido)
+     ly = px        (portrait x vira landscape y)
+     Esquerda landscape = defensivo   /   Direita = ofensivo
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Profundidade (landscape x, portrait y invertido) ─────── */
+const DEP = [0.03, 0.17, 0.33, 0.50, 0.67, 0.83, 0.97];
+const DEP_NAMES = ["Área Própria","Defesa","Meio Def","Meio Ata","Ataque","Área Adv"];
+
+/* ── Corredores laterais (landscape y = portrait x) ──────── */
+const LAT = [0.05, 0.27, 0.73, 0.95];
+const LAT_NAMES = ["Cor. Sup","Central","Cor. Inf"];
+
+/* ── ZONES_L: landscape (FieldBoard) ─────────────────────── */
+export const ZONES_L = [];
+for (let row = 0; row < 3; row++) {
+  for (let col = 0; col < 6; col++) {
+    ZONES_L.push({
+      id:   row * 6 + col,
+      name: `${LAT_NAMES[row]} · ${DEP_NAMES[col]}`,
+      row, col,
+      x1: DEP[col],     x2: DEP[col + 1],
+      y1: LAT[row],     y2: LAT[row + 1],
+    });
+  }
 }
 
-/* Landscape zones (same IDs, transposed geometry) */
-const LX1=0.044, LX2=0.956, LY1=0.030, LY2=0.971;
-const LSX=(LX2-LX1)/6, LSY=(LY2-LY1)/5;
+/* ── ZONES_P: portrait (FieldMap / heatmap) ──────────────────
+   Mapeamento de volta para portrait: px = ly, py = 1 − lx
+   prow representa profundidade (0 = ofensivo/topo, 5 = defensivo/fundo)
+   pcol representa corredor (0 = esquerdo no portrait = Cor.Sup no landscape)
 
-export const ZONES_L=[];
-for(let r=0;r<5;r++) for(let c=0;c<6;c++){
-  ZONES_L.push({
-    id:r*6+c, row:r, col:c,
-    name:ZONE_NAMES[r*6+c],
-    x1:LX1+c*LSX, x2:LX1+(c+1)*LSX,
-    y1:LY1+r*LSY, y2:LY1+(r+1)*LSY,
-  });
+   ID consistente: same real area → same ID
+     landscape_row = pcol
+     landscape_col = 5 − prow   (portrait top = ofensivo = landscape col 5)
+     id = landscape_row × 6 + landscape_col
+   ─────────────────────────────────────────────────────────── */
+const P_Y = [0.03, 0.17, 0.33, 0.50, 0.67, 0.83, 0.97]; // profundidade portrait (topo=ofensivo)
+const P_X = [0.05, 0.27, 0.73, 0.95];                    // lateral portrait (0=esq)
+const P_DEP_NAMES = ["Área Adv","Ataque","Meio Ata","Meio Def","Defesa","Área Própria"];
+
+export const ZONES_P = [];
+for (let prow = 0; prow < 6; prow++) {
+  for (let pcol = 0; pcol < 3; pcol++) {
+    const lRow = pcol;
+    const lCol = 5 - prow;
+    ZONES_P.push({
+      id:   lRow * 6 + lCol,
+      name: `${LAT_NAMES[lRow]} · ${P_DEP_NAMES[prow]}`,
+      x1: P_X[pcol],     x2: P_X[pcol + 1],
+      y1: P_Y[prow],     y2: P_Y[prow + 1],
+    });
+  }
+}
+
+/* ── ZONES_50: grade 10×5 para mapeamento preciso no FieldBoard ──
+   50 zonas: 10 colunas (profundidade) × 5 linhas (corredor)
+   IDs: row * 10 + col  (0–49)                                   */
+/* ── Limites do campo dentro da imagem (idênticos ao ZONES_L) ──
+   lx: 0.03 (defesa) → 0.97 (ataque)
+   ly: 0.05 (Cor.Sup) → 0.95 (Cor.Inf)
+   As 50 zonas ficam exatamente dentro das linhas do campo.      */
+const Z50_X0 = 0.03, Z50_X1 = 0.97;   // profundidade (landscape x)
+const Z50_Y0 = 0.05, Z50_Y1 = 0.95;   // corredor   (landscape y)
+const Z50_CW = (Z50_X1 - Z50_X0) / 10;
+const Z50_CH = (Z50_Y1 - Z50_Y0) / 5;
+
+const Z50_COLS = ["Def.Fundo","Def.Fundo","Defesa","Defesa","Meio-Def","Meio-Ata","Ataque","Ataque","Área Adv","Área Adv"];
+const Z50_ROWS = ["Cor.Sup","Q.Sup","Centro","Q.Inf","Cor.Inf"];
+
+export const ZONES_50 = [];
+for (let row = 0; row < 5; row++) {
+  for (let col = 0; col < 10; col++) {
+    const x1 = Z50_X0 + col * Z50_CW;
+    const y1 = Z50_Y0 + row * Z50_CH;
+    ZONES_50.push({
+      id:   row * 10 + col,
+      name: `${Z50_ROWS[row]} · ${Z50_COLS[col]}`,
+      x1, x2: x1 + Z50_CW,
+      y1, y2: y1 + Z50_CH,
+      cx: x1 + Z50_CW / 2,
+      cy: y1 + Z50_CH / 2,
+    });
+  }
 }

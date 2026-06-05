@@ -1,22 +1,36 @@
-import { useRef, useState, useMemo, useCallback } from "react";
+import { useRef, useMemo, useCallback } from "react";
 import { C }                from "../../constants/colors";
 import { getMeta, fmtVideo } from "../../utils/format";
 
 /* ═══════════════════════════════════════════════════════
    VIDEO PANEL  –  player + multi-track timeline
 ═══════════════════════════════════════════════════════ */
+
 export default function VideoPanel({
   videoRef, videoSrc, setVideoSrc,
   videoCurrent, setVideoCurrent,
   videoDuration, setVideoDuration,
   hist, setHist,
+  playbackRate,
 }) {
   const fileInputRef = useRef(null);
+
+  /* Abre vídeo via dialog Electron (tem caminho real) ou input file (fallback) */
+  const handleLoad = async () => {
+    if (window.electronAPI) {
+      const p = await window.electronAPI.openVideoFile();
+      if (!p) return;
+      if (videoSrc && videoSrc.startsWith("blob:")) URL.revokeObjectURL(videoSrc);
+      setVideoSrc("local-video:///" + p.replace(/\\/g, "/"));
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (videoSrc) URL.revokeObjectURL(videoSrc);
+    if (videoSrc && videoSrc.startsWith("blob:")) URL.revokeObjectURL(videoSrc);
     setVideoSrc(URL.createObjectURL(file));
   };
 
@@ -29,7 +43,7 @@ export default function VideoPanel({
       <input ref={fileInputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={handleFile} />
 
       {!videoSrc ? (
-        <LoadArea onClick={() => fileInputRef.current?.click()} />
+        <LoadArea onClick={handleLoad} />
       ) : (
         <>
           {/* ── Video element ───────────────────────────────── */}
@@ -39,7 +53,10 @@ export default function VideoPanel({
             controls
             style={{ width: "100%", borderRadius: 6, background: "#000", maxHeight: 200 }}
             onTimeUpdate={e => setVideoCurrent(e.target.currentTime)}
-            onLoadedMetadata={e => setVideoDuration(e.target.duration)}
+            onLoadedMetadata={e => {
+              setVideoDuration(e.target.duration);
+              if (playbackRate && playbackRate !== 1) e.target.playbackRate = playbackRate;
+            }}
           />
 
           {/* ── Scrubber bar ─────────────────────────────────── */}
@@ -60,9 +77,20 @@ export default function VideoPanel({
             seekTo={seekTo}
           />
 
-          <button onClick={() => fileInputRef.current?.click()} style={smallBtn(C.txtM)}>
-            TROCAR VÍDEO
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={handleLoad} style={smallBtn(C.txtM)}>
+              TROCAR VÍDEO
+            </button>
+            {window.electronAPI && (
+              <button
+                onClick={() => window.electronAPI.openVideoWindow()}
+                title="Abrir vídeo em janela separada (segundo monitor)"
+                style={smallBtn(C.blue)}
+              >
+                ⬝ DESTACAR VÍDEO
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>

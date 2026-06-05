@@ -4,17 +4,6 @@ const O  = "#C65100"; // laranja
 const AM = "#F59E0B"; // âmbar — estatísticas
 
 export const SECTORS = [
-  /* ── Aspectos Defensivos ────────────────────────────────── */
-  { id:"def", label:"Aspectos Defensivos", color:"#1D4ED8", actions:[
-    { id:"recuperacao", label:"RECUPERAÇÃO DA POSSE",    type:"single", color:G },
-    { id:"jogoAereo",   label:"JOGO AÉREO",              type:"split",
-      posId:"jogoAereoPos", posLabel:"GANHO",   posColor:G, negId:"jogoAereoNeg", negLabel:"PERDIDO",  negColor:R },
-    { id:"bloquFinal",  label:"BLOQUEIO DE FINALIZAÇÃO", type:"single", color:G },
-    { id:"um1Def",      label:"1×1 DEFENSIVO",           type:"split",
-      posId:"um1DefPos",    posLabel:"GANHO",   posColor:G, negId:"um1DefNeg",    negLabel:"PERDIDO",  negColor:R },
-    { id:"desarme",     label:"DESARME",                 type:"single", color:G },
-  ]},
-
   /* ── Estatísticas ───────────────────────────────────────── */
   { id:"stats", label:"Estatísticas", color:"#7C3AED", actions:[
     { id:"gol",         label:"GOL",        type:"single", color:AM },
@@ -30,6 +19,17 @@ export const SECTORS = [
     { id:"perdaPosse", label:"PERDA DA POSSE", type:"single", color:R },
     { id:"passeChave", label:"PASSE CHAVE",    type:"split",
       posId:"passeChavePos", posLabel:"CERTO",  posColor:G, negId:"passeChaveNeg", negLabel:"ERRADO",  negColor:R },
+  ]},
+
+  /* ── Ações Defensivas ───────────────────────────────────── */
+  { id:"def", label:"Ações Defensivas", color:"#1D4ED8", actions:[
+    { id:"recuperacao", label:"RECUPERAÇÃO DA POSSE",    type:"single", color:G },
+    { id:"jogoAereo",   label:"JOGO AÉREO",              type:"split",
+      posId:"jogoAereoPos", posLabel:"GANHO",   posColor:G, negId:"jogoAereoNeg", negLabel:"PERDIDO",  negColor:R },
+    { id:"bloquFinal",  label:"BLOQUEIO DE FINALIZAÇÃO", type:"single", color:G },
+    { id:"um1Def",      label:"1×1 DEFENSIVO",           type:"split",
+      posId:"um1DefPos",    posLabel:"GANHO",   posColor:G, negId:"um1DefNeg",    negLabel:"PERDIDO",  negColor:R },
+    { id:"desarme",     label:"DESARME",                 type:"single", color:G },
   ]},
 
   /* ── Relação com a Bola ─────────────────────────────────── */

@@ -1,6 +1,6 @@
 import { C } from "../../constants/colors";
 
-export default function SoberCard({ title, children, style = {} }) {
+export default function SoberCard({ title, children, style = {}, headerRight }) {
   return (
     <div style={{
       background: C.card,
@@ -13,18 +13,22 @@ export default function SoberCard({ title, children, style = {} }) {
     }}>
       {title && (
         <div style={{
-          padding: "8px 12px",
+          padding: "6px 12px",
           borderBottom: `1px solid ${C.bdr}`,
           fontFamily: "'Bebas Neue'",
           fontSize: 12,
           letterSpacing: 2,
           color: C.txtM,
           flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}>
-          {title}
+          <span>{title}</span>
+          {headerRight}
         </div>
       )}
-      <div style={{ padding: "10px 12px", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <div style={{ padding: "10px 12px", flex: 1, minHeight: 0, overflow: "hidden", display:"flex", flexDirection:"column" }}>
         {children}
       </div>
     </div>

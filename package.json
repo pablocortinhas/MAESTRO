@@ -4,6 +4,7 @@
   "private": true,
   "main": "src/main.js",
   "scripts": {
+    "import-squads": "node scripts/import-squads.js",
     "dev": "vite",
     "build": "vite build",
     "start": "npm run build && electron .",
@@ -14,7 +15,8 @@
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
@@ -28,6 +30,7 @@
     "files": [
       "dist/**/*",
       "src/main.js",
+      "src/preload.js",
       "package.json"
     ],
     "directories": {
