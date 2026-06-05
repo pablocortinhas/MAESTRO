@@ -3,3 +3,6 @@ out/
 .DS_Store
 dist/
 .vscode/
+.cache/
+*.xlsx
+imagens/fotos/
