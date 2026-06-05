@@ -23,9 +23,9 @@ const SHORT = {
 const sl = (p, sub) => { const s = SHORT[p] || p; return sub ? `${s} ${sub}` : s; };
 
 const CTRL = {
-  background:"none", border:"1px solid #D4D4D4", borderRadius:3,
-  padding:"1px 5px", cursor:"pointer", fontSize:11, color:C.txtM,
-  lineHeight:1, flexShrink:0,
+  background:"none", border:"1px solid #D4D4D4", borderRadius:2,
+  padding:"0 4px", cursor:"pointer", fontSize:9, color:C.txtM,
+  lineHeight:"13px", flexShrink:0,
 };
 
 function buildDefaultLayout() {
@@ -52,10 +52,9 @@ function loadShortcuts() {
   return {};
 }
 
-export default function ActionsPanel({ selZone, selAct, setSelAct, register }) {
+export default function ActionsPanel({ selAct, setSelAct, editMode, setEditMode }) {
   const [layout,     setLayout]     = useState(loadLayout);
   const [shortcuts,  setShortcuts]  = useState(loadShortcuts);
-  const [editMode,   setEditMode]   = useState(false);
   const [editingKey, setEditingKey] = useState(null);
 
   useEffect(() => {
@@ -66,7 +65,6 @@ export default function ActionsPanel({ selZone, selAct, setSelAct, register }) {
     try { localStorage.setItem(LS_SHORTCUTS, JSON.stringify(shortcuts)); } catch {}
   }, [shortcuts]);
 
-  // Global keyboard shortcut handler
   useEffect(() => {
     if (editMode) return;
     const handler = (e) => {
@@ -77,12 +75,11 @@ export default function ActionsPanel({ selZone, selAct, setSelAct, register }) {
       if (!match) return;
       e.preventDefault();
       const [btnId] = match;
-      if (selZone !== null) register(btnId, selZone);
-      else setSelAct(btnId === selAct ? null : btnId);
+      setSelAct(btnId === selAct ? null : btnId);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editMode, editingKey, shortcuts, selZone, selAct, register, setSelAct]);
+  }, [editMode, editingKey, shortcuts, selAct, setSelAct]);
 
   const col0 = layout.filter(b => b.col === 0).sort((a, b) => a.order - b.order);
   const col1 = layout.filter(b => b.col === 1).sort((a, b) => a.order - b.order);
@@ -115,108 +112,127 @@ export default function ActionsPanel({ selZone, selAct, setSelAct, register }) {
     return next;
   });
 
-  const renderBtn = (btn) => {
-    const sel = selAct === btn.id;
+  /* ── Botão em modo edição — mesma grade 3 cols, controles compactos ── */
+  const renderEditBtn = (btn) => {
     const ac  = btn.color;
     const sk  = shortcuts[btn.id] || "";
     const isAssigning = editingKey === btn.id;
 
-    if (editMode) {
-      return (
-        <div key={btn.id} style={{ border:`1px solid ${ac}55`, borderRadius:7, padding:"5px 7px", background:ac+"0E", display:"flex", flexDirection:"column", gap:5 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-            <span style={{ fontFamily:"'Bebas Neue'", fontSize:12, color:ac, flex:1, letterSpacing:.3, lineHeight:1.2 }}>{btn.label}</span>
-            <button style={CTRL} onClick={() => moveInCol(btn.id, -1)}>↑</button>
-            <button style={CTRL} onClick={() => moveInCol(btn.id,  1)}>↓</button>
-            <button style={CTRL} onClick={() => switchCol(btn.id)}    >⇄</button>
-          </div>
-          <div style={{ display:"flex", gap:3, flexWrap:"wrap" }}>
-            {COLOR_OPTS.map(c => (
-              <button key={c} onClick={() => setColor(btn.id, c)} style={{ width:14, height:14, background:c, borderRadius:"50%", border: c === btn.color ? "2px solid #000" : "1px solid rgba(0,0,0,.2)", cursor:"pointer", padding:0, flexShrink:0 }}/>
-            ))}
-          </div>
-          {/* Shortcut row */}
-          <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-            <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>ATALHO:</span>
-            {isAssigning ? (
-              <input
-                autoFocus
-                readOnly
-                placeholder="Pressione uma tecla..."
-                onKeyDown={e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.key === "Escape") { setEditingKey(null); return; }
-                  if (["Control","Shift","Alt","Meta","CapsLock","Tab"].includes(e.key)) return;
-                  setShortcut(btn.id, e.key.length === 1 ? e.key.toUpperCase() : e.key);
-                  setEditingKey(null);
-                }}
-                onBlur={() => setEditingKey(null)}
-                style={{ flex:1, background:"#FFF5F5", border:"1px solid "+C.red, borderRadius:3, padding:"2px 5px", fontSize:10, fontFamily:"monospace", outline:"none", color:C.red, textAlign:"center", minHeight:22 }}
-              />
-            ) : (
-              <button
-                onClick={() => setEditingKey(btn.id)}
-                style={{ flex:1, background:"#F5F5F5", border:"1px solid #D0D0D0", borderRadius:3, padding:"2px 5px", fontSize:10, fontFamily:"monospace", cursor:"pointer", textAlign:"center", color: sk ? "#1A1A1A" : C.txtM, minHeight:22 }}
-              >
-                {sk || "Definir tecla"}
-              </button>
-            )}
-            {sk && !isAssigning && (
-              <button style={{ ...CTRL, color:"#DC2626", border:"1px solid #FFAAAA" }} onClick={() => setShortcut(btn.id, "")}>×</button>
-            )}
-          </div>
+    return (
+      <div key={btn.id} style={{
+        flex:1, minHeight:0,
+        display:"flex", flexDirection:"column",
+        border:`1px solid ${ac}44`, borderRadius:6,
+        background:ac+"0A", overflow:"hidden",
+      }}>
+        {/* Barra superior: ↑ ↓ ⇄ */}
+        <div style={{ display:"flex", gap:2, padding:"2px 3px", background:ac+"10", flexShrink:0 }}
+          onClick={e => e.stopPropagation()}>
+          <button onClick={() => moveInCol(btn.id, -1)} style={CTRL}>↑</button>
+          <button onClick={() => moveInCol(btn.id,  1)} style={CTRL}>↓</button>
+          <button onClick={() => switchCol(btn.id)}     style={CTRL}>⇄</button>
+          <div style={{ flex:1 }}/>
+          {sk && !isAssigning && (
+            <span style={{ fontSize:7, fontFamily:"monospace", color:ac, background:ac+"20", borderRadius:2, padding:"0 3px", lineHeight:"13px" }}>
+              {sk}
+            </span>
+          )}
         </div>
-      );
-    }
+
+        {/* Label central */}
+        <div style={{ flex:1, minHeight:0, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 3px" }}>
+          <span style={{ fontFamily:"'Bebas Neue'", fontSize:11, letterSpacing:.4, color:ac, textAlign:"center", lineHeight:1.1, wordBreak:"break-word" }}>
+            {btn.label}
+          </span>
+        </div>
+
+        {/* Barra inferior: paleta de cores + atalho */}
+        <div style={{ display:"flex", alignItems:"center", gap:2, padding:"2px 3px", background:ac+"10", flexShrink:0 }}
+          onClick={e => e.stopPropagation()}>
+          {COLOR_OPTS.map(c => (
+            <button key={c} onClick={() => setColor(btn.id, c)} style={{
+              width:9, height:9, background:c, borderRadius:"50%",
+              border: c === btn.color ? "1.5px solid #000" : "1px solid rgba(0,0,0,.18)",
+              cursor:"pointer", padding:0, flexShrink:0,
+            }}/>
+          ))}
+          <div style={{ flex:1 }}/>
+          {isAssigning ? (
+            <input
+              autoFocus readOnly placeholder="tecla..."
+              onKeyDown={e => {
+                e.preventDefault(); e.stopPropagation();
+                if (e.key === "Escape") { setEditingKey(null); return; }
+                if (["Control","Shift","Alt","Meta","CapsLock","Tab"].includes(e.key)) return;
+                setShortcut(btn.id, e.key.length === 1 ? e.key.toUpperCase() : e.key);
+                setEditingKey(null);
+              }}
+              onBlur={() => setEditingKey(null)}
+              style={{ width:36, background:"#FFF5F5", border:"1px solid "+ac, borderRadius:2, padding:"0 2px", fontSize:8, fontFamily:"monospace", outline:"none", color:ac, textAlign:"center" }}
+            />
+          ) : (
+            <button onClick={() => setEditingKey(btn.id)} style={{ ...CTRL, color: sk ? ac : C.txtM, fontSize:8 }}>
+              {sk ? `${sk} ✎` : "⌨"}
+            </button>
+          )}
+          {sk && !isAssigning && (
+            <button onClick={() => setShortcut(btn.id, "")} style={{ ...CTRL, color:"#DC2626", border:"1px solid #FFAAAA", fontSize:8 }}>×</button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ── Botão em modo normal ── */
+  const renderViewBtn = (btn) => {
+    const sel = selAct === btn.id;
+    const ac  = btn.color;
+    const sk  = shortcuts[btn.id] || "";
 
     return (
       <button key={btn.id}
-        onClick={() => {
-          if (selZone !== null) register(btn.id, selZone);
-          else setSelAct(btn.id === selAct ? null : btn.id);
-        }}
+        onClick={() => setSelAct(btn.id === selAct ? null : btn.id)}
         style={{
-          padding:"3px 4px", width:"100%", position:"relative",
-          background: sel ? ac : ac + "15",
-          border: `2px solid ${sel ? ac : ac + "55"}`,
-          borderRadius:6, cursor:"pointer", transition:"all .1s",
+          flex:1, minHeight:0,
+          padding:"2px 4px", width:"100%", position:"relative",
+          background: sel ? ac : ac + "12",
+          border: `2px solid ${sel ? ac : ac + "44"}`,
+          borderRadius:6, cursor:"pointer", transition:"all .12s",
           display:"flex", alignItems:"center", justifyContent:"center",
-          minHeight:28,
+          boxShadow: sel ? `0 2px 6px ${ac}44` : "none",
         }}
       >
         {sk && (
           <span style={{
             position:"absolute", top:1, right:2,
             fontSize:7, fontFamily:"monospace",
-            color: sel ? "rgba(255,255,255,.8)" : ac+"CC",
-            background: sel ? "rgba(0,0,0,.3)" : ac+"18",
+            color: sel ? "rgba(255,255,255,.85)" : ac+"BB",
+            background: sel ? "rgba(0,0,0,.28)" : ac+"18",
             borderRadius:2, padding:"0 2px", lineHeight:"12px",
           }}>
             {sk}
           </span>
         )}
-        <span style={{ fontFamily:"'Bebas Neue'", fontSize:11, letterSpacing:.3, color: sel ? "#FFF" : ac, textAlign:"center", lineHeight:1.2, wordBreak:"break-word" }}>
+        <span style={{ fontFamily:"'Bebas Neue'", fontSize:14, letterSpacing:.5, color: sel ? "#FFF" : ac, textAlign:"center", lineHeight:1.15, wordBreak:"break-word" }}>
           {btn.label}
         </span>
       </button>
     );
   };
 
+  /* ── Grade 3 colunas — igual em visualização e edição ── */
+  const all = [...col0, ...col1];
+  const s   = Math.ceil(all.length / 3);
+  const cols3 = [all.slice(0, s), all.slice(s, s * 2), all.slice(s * 2)];
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-      <div style={{ display:"flex", justifyContent:"flex-end" }}>
-        <button onClick={() => { setEditMode(e => !e); setEditingKey(null); }} style={{ ...lBtn(editMode), fontSize:10, padding:"2px 9px" }}>
-          {editMode ? "CONCLUIR" : "EDITAR BOTÕES"}
-        </button>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, alignItems:"start" }}>
-        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-          {col0.map(renderBtn)}
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-          {col1.map(renderBtn)}
-        </div>
+    <div style={{ display:"flex", flexDirection:"column", gap:4, height:"100%" }}>
+      <div style={{ flex:1, minHeight:0, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3 }}>
+        {cols3.map((col, i) => (
+          <div key={i} style={{ display:"flex", flexDirection:"column", gap:3, minHeight:0 }}>
+            {col.map(editMode ? renderEditBtn : renderViewBtn)}
+          </div>
+        ))}
       </div>
     </div>
   );

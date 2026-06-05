@@ -8,17 +8,6 @@ export default function HistPanel({ hist, onDeleteEntry, videoRef, videoDuration
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 0 }}>
-      <div style={{
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between", flexShrink: 0,
-      }}>
-        <span style={{
-          fontFamily: "'Bebas Neue'", fontSize: 11,
-          letterSpacing: 2, color: C.txtM,
-        }}>
-          HISTÓRICO ({hist.length})
-        </span>
-      </div>
 
       {hist.length === 0 ? (
         <div style={{
@@ -63,13 +52,16 @@ export default function HistPanel({ hist, onDeleteEntry, videoRef, videoDuration
                 {h.num ? `#${h.num}` : "EQ"}
               </span>
 
-              <span style={{
-                color: C.txtM, flex: 1, minWidth: 50, maxWidth: 70,
-                fontFamily: "'Rajdhani',sans-serif",
-                fontWeight: 600, fontSize: 10,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {h.player}
+              <span
+                title={h.player}
+                style={{
+                  color: C.txtM, flex: 1, minWidth: 50, maxWidth: 70,
+                  fontFamily: "'Rajdhani',sans-serif",
+                  fontWeight: 600, fontSize: 10,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}
+              >
+                {h.playerDisplay || h.player}
               </span>
 
               <span style={{
