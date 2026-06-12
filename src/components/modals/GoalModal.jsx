@@ -1,148 +1,116 @@
-import { useState } from "react";
-import { C }        from "../../constants/colors";
-import golImg       from "../../../imagens/gol.png";
+import { useState, useRef } from "react";
+import { C }              from "../../constants/colors";
+import golImg             from "../../../imagens/gol.png";
+import bolaVerdeImg       from "../../../imagens/bola_verde.png";
+import bolaVermelhaImg    from "../../../imagens/bola_vermelha.png";
 
-/* Zonas do gol: 3 colunas × 3 linhas (esq→dir, cima→baixo) */
-const GOAL_ZONES = [
-  ["Canto Esq-Alto",  "Centro-Alto",  "Canto Dir-Alto"],
-  ["Centro Esq",      "Centro",       "Centro Dir"],
-  ["Canto Esq-Baixo", "Centro-Baixo", "Canto Dir-Baixo"],
-];
-
-function GoalImage({ side, onSelect }) {
-  const [hover, setHover] = useState(null);
-
-  const accentR = side === "home" ? "232,0,28" : "0,80,200";
-  const accentC = side === "home" ? C.red       : "#0050C8";
-
-  return (
-    <div style={{ position: "relative", userSelect: "none", borderRadius: 6, overflow: "hidden", border: `2px solid ${accentC}44` }}>
-      {/* Imagem do gol */}
-      <img
-        src={golImg}
-        draggable={false}
-        style={{ display: "block", width: "100%", height: "auto" }}
-        alt="gol"
-      />
-
-      {/* Grid 3×3 clicável sobreposto */}
-      <div style={{
-        position: "absolute", inset: 0,
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr",
-        gridTemplateRows: "1fr 1fr 1fr",
-      }}>
-        {GOAL_ZONES.flat().map(zone => {
-          const isHover = hover === zone;
-          return (
-            <div
-              key={zone}
-              onMouseEnter={() => setHover(zone)}
-              onMouseLeave={() => setHover(null)}
-              onClick={() => onSelect(zone)}
-              title={zone}
-              style={{
-                cursor: "crosshair",
-                background: isHover
-                  ? `rgba(${accentR}, 0.52)`
-                  : "transparent",
-                border: isHover
-                  ? `2px solid rgba(${accentR}, 0.9)`
-                  : "1px solid rgba(255,255,255,0.12)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background .1s",
-              }}
-            >
-              {isHover && (
-                <span style={{
-                  color: "#fff",
-                  fontSize: 11,
-                  fontFamily: "'Bebas Neue'",
-                  letterSpacing: 1,
-                  textShadow: "0 1px 4px rgba(0,0,0,.9)",
-                  textAlign: "center",
-                  lineHeight: 1.2,
-                  padding: "2px 4px",
-                  background: `rgba(${accentR}, 0.6)`,
-                  borderRadius: 3,
-                }}>
-                  {zone}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+function getZoneLabel(e, containerRect, imgEl) {
+  if (!imgEl) return "";
+  const ir = imgEl.getBoundingClientRect();
+  const cx = e.clientX, cy = e.clientY;
+  if (cx >= ir.left && cx <= ir.right && cy >= ir.top && cy <= ir.bottom) {
+    const rx = (cx - ir.left) / ir.width;
+    const ry = (cy - ir.top) / ir.height;
+    const col = rx < 1/3 ? "Esq" : rx < 2/3 ? "Centro" : "Dir";
+    const row = ry < 1/3 ? "Alto" : ry < 2/3 ? "Meio" : "Baixo";
+    return (row === "Meio" && col === "Centro") ? "Centro" : `${col}-${row}`;
+  }
+  if (cy < ir.top) {
+    const hx = (cx - containerRect.left) / containerRect.width;
+    return hx < 0.33 ? "Fora-Acima-Esq" : hx < 0.67 ? "Fora-Acima" : "Fora-Acima-Dir";
+  }
+  return cx < ir.left ? "Fora-Esq" : "Fora-Dir";
 }
 
 export default function GoalModal({ goalModal, setGoalModal, registerWithData, setScore }) {
-  if (!goalModal) return null;
-  const { side, actId, zoneId } = goalModal;
+  const [ball, setBall] = useState(null);
+  const imgRef          = useRef(null);
 
-  const handleSelect = (section) => {
-    if (side === "home") setScore(s => ({ ...s, fla: s.fla + 1 }));
-    else                 setScore(s => ({ ...s, adv: s.adv + 1 }));
-    registerWithData(actId, zoneId, section ? ` · ${section}` : "");
+  if (!goalModal) return null;
+  const { addScore, ballColor, title, actId, zoneId } = goalModal;
+
+  const ballImg    = ballColor === "vermelha" ? bolaVermelhaImg : bolaVerdeImg;
+  const titleColor = ballColor === "vermelha" ? "#DC2626" : C.red;
+
+  const handleSelect = (posLabel, gx=null, gy=null) => {
+    if (addScore === "home") setScore(s => ({ ...s, fla: s.fla + 1 }));
+    else if (addScore === "away") setScore(s => ({ ...s, adv: s.adv + 1 }));
+    registerWithData(actId, zoneId, posLabel ? ` · ${posLabel}` : "", gx, gy);
     setGoalModal(null);
+    setBall(null);
   };
 
-  const titleColor = side === "home" ? C.red : "#0050C8";
+  const handleAreaClick = (e) => {
+    if (ball) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = (e.clientX - rect.left) / rect.width * 100;
+    const yPct = (e.clientY - rect.top)  / rect.height * 100;
+    const label = getZoneLabel(e, rect, imgRef.current);
+    setBall({ xPct, yPct });
+    setTimeout(() => handleSelect(label, xPct / 100, yPct / 100), 650);
+  };
 
   return (
     <div
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(0,0,0,.55)",
-        zIndex: 9000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-      onClick={() => setGoalModal(null)}
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:9000, display:"flex", alignItems:"center", justifyContent:"center" }}
+      onClick={() => { setGoalModal(null); setBall(null); }}
     >
       <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.bdr}`,
-          borderRadius: 12,
-          padding: "18px 20px",
-          width: 360,
-          boxShadow: "0 8px 32px rgba(0,0,0,.28)",
-        }}
+        style={{ background:C.card, border:`1px solid ${C.bdr}`, borderRadius:12, padding:"18px 20px", width:400, boxShadow:"0 8px 32px rgba(0,0,0,.28)" }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Título */}
-        <div style={{
-          fontSize: 13, color: titleColor,
-          letterSpacing: 3, fontFamily: "'Bebas Neue'",
-          marginBottom: 4, textAlign: "center",
-        }}>
-          {side === "home" ? "GOL DO FLAMENGO" : "GOL SOFRIDO"}
+        <div style={{ fontSize:13, color:titleColor, letterSpacing:3, fontFamily:"'Bebas Neue'", marginBottom:4, textAlign:"center" }}>
+          {title || "POSIÇÃO DA BOLA"}
         </div>
-        <div style={{
-          fontSize: 9, color: C.txtM,
-          letterSpacing: 1.5, fontFamily: "'Rajdhani',sans-serif",
-          fontWeight: 600, textAlign: "center",
-          marginBottom: 12,
-        }}>
-          CLIQUE NO GRÁFICO ONDE A BOLA ENTROU
+        <div style={{ fontSize:9, color:C.txtM, letterSpacing:1.5, fontFamily:"'Rajdhani',sans-serif", fontWeight:600, textAlign:"center", marginBottom:12 }}>
+          CLIQUE ONDE FOI A BOLA
         </div>
 
-        {/* Imagem do gol com zonas clicáveis */}
-        <GoalImage side={side} onSelect={handleSelect} />
+        {/* Área clicável: margem escura acima e nas laterais + imagem do gol */}
+        <div
+          onClick={handleAreaClick}
+          style={{
+            position:"relative", cursor: ball ? "default" : "crosshair",
+            userSelect:"none", background:"#111",
+            padding:"38px 28px 0",
+            borderRadius:6, overflow:"hidden",
+            border:`1px solid ${titleColor}33`,
+          }}
+        >
+          <img
+            ref={imgRef}
+            src={golImg}
+            draggable={false}
+            style={{ display:"block", width:"100%", height:"auto" }}
+            alt="gol"
+          />
+          {ball && (
+            <img
+              src={ballImg}
+              draggable={false}
+              style={{
+                position:"absolute",
+                left:`calc(${ball.xPct}% - 15px)`,
+                top:`calc(${ball.yPct}% - 15px)`,
+                width:30, height:30,
+                pointerEvents:"none",
+                filter:"drop-shadow(0 2px 6px rgba(0,0,0,.8))",
+                zIndex:10,
+              }}
+              alt=""
+            />
+          )}
+        </div>
 
-        {/* Botão para registrar sem posição */}
         <button
           onClick={() => handleSelect("")}
           style={{
-            marginTop: 10, display: "block", width: "100%",
-            textAlign: "center", background: "transparent",
-            border: `1px solid ${C.bdr}`, color: C.txtM,
-            borderRadius: 6, padding: "7px 0",
-            fontFamily: "'Bebas Neue'", fontSize: 12,
-            letterSpacing: 2, cursor: "pointer",
+            marginTop:10, display:"block", width:"100%",
+            textAlign:"center", background:"transparent",
+            border:`1px solid ${C.bdr}`, color:C.txtM,
+            borderRadius:6, padding:"7px 0",
+            fontFamily:"'Bebas Neue'", fontSize:12,
+            letterSpacing:2, cursor:"pointer",
           }}
         >
           REGISTRAR SEM POSIÇÃO

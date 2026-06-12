@@ -51,6 +51,12 @@ SECTORS.forEach(s => s.actions.forEach(a => {
   else { ALL_IDS.push(a.posId); ALL_IDS.push(a.negId); }
 }));
 
+export const GOAL_MODAL_CONFIG = {
+  "gol":      { addScore: "home", ballColor: "verde",    title: "GOL DO FLAMENGO" },
+  "finalPos": { addScore: null,   ballColor: "verde",    title: "FINALIZAÇÃO CERTA" },
+  "finalNeg": { addScore: null,   ballColor: "vermelha", title: "FINALIZAÇÃO ERRADA" },
+};
+
 export const DEFAULT_LIVE_BUTTONS = [
   {id:"gol",           col:0,row:0},{id:"assistencia",   col:1,row:0},
   {id:"finalPos",      col:2,row:0},{id:"um1OfPos",      col:3,row:0},

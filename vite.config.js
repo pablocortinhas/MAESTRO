@@ -4,9 +4,9 @@ import { readFileSync } from "fs";
 
 const { version } = JSON.parse(readFileSync("./package.json", "utf-8"));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: process.env.VITE_BASE_PATH || "./",
+  base: process.env.VITE_BASE_PATH || (command === "build" ? "./" : "/"),
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
@@ -15,4 +15,4 @@ export default defineConfig({
       ignored: ["**/out/**", "**/dist/**"],
     },
   },
-});
+}));

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import fundo1Img from "../imagens/fundo1.png";
+import { version as APP_VERSION } from "../package.json";
 import { C }                                   from "./constants/colors";
 import { ZONES_50 }                             from "./constants/zones";
-import { SECTORS, ALL_IDS }                    from "./constants/sectors";
+import { SECTORS, ALL_IDS, GOAL_MODAL_CONFIG }  from "./constants/sectors";
 import { SQUADS as SQUADS_STATIC, CAT_LIST }   from "./constants/squads";
 import { LOGO_B64 }                            from "./assets/base64";
 import { fmt, getMeta, download }              from "./utils/format";
@@ -10,6 +11,7 @@ import { initSt, initZSt, mkPlayers }          from "./utils/dataInit";
 import { lBtn, filtBtn }                       from "./utils/styles";
 import SoberCard       from "./components/common/SoberCard";
 import StatCard        from "./components/common/StatCard";
+import GoalMapStats    from "./components/stats/GoalMapStats";
 import FieldMap        from "./components/field/FieldMap";
 import FieldBoard      from "./components/field/FieldBoard";
 import ActionsPanel    from "./components/actions/ActionsPanel";
@@ -202,7 +204,8 @@ function RubroMap(){
     const aid=actId||selAct, zid=zoneId;
     if(zid===null||zid===undefined||aid===null||aid===undefined) return;
     const d=SECTORS.flatMap(s=>s.actions).find(x=>x.id===aid||x.posId===aid||x.negId===aid);
-    if(d?.openGoalModal){setGoalModal({side:d.openGoalModal,actId:aid,zoneId:zid,x:lx,y:ly});setSelAct(null);return;}
+    const gmCfg=GOAL_MODAL_CONFIG[aid];
+    if(gmCfg){setGoalModal({...gmCfg,actId:aid,zoneId:zid,x:lx,y:ly});setSelAct(null);return;}
     if(d?.openPenaltyModal){setPenaltyModal({side:d.openPenaltyModal,actId:aid,zoneId:zid,x:lx,y:ly});setSelAct(null);return;}
     regData(aid,zid,"",lx,ly);
   };
@@ -232,8 +235,7 @@ function RubroMap(){
     }
   };
 
-  const regData=(aid,zid,extraLabel="",lxIn=null,lyIn=null)=>{
-    // Usa centro da zona como fallback quando não há coordenadas exatas (modais, atalhos)
+  const regData=(aid,zid,extraLabel="",lxIn=null,lyIn=null,goalXIn=null,goalYIn=null)=>{
     const zL=ZONES_50.find(z=>z.id===zid);
     const fx = lxIn ?? (zL ? zL.cx : 0.5);
     const fy = lyIn ?? (zL ? zL.cy : 0.5);
@@ -249,7 +251,8 @@ function RubroMap(){
       num:pl?.number||null,label:meta.label+extraLabel,color:meta.color,
       zone:zL?.name||"—",actId:aid,zoneId:zid,playerId:selPl||null,
       videoTime:vt,videoEndTime:null,
-      x:fx, y:fy,   // coordenadas landscape para mapa de calor
+      x:fx, y:fy,
+      goalX:goalXIn, goalY:goalYIn,
     },...p.slice(0,299)]);
     setFlashZ(zid);setToast(meta.label);
     setTimeout(()=>setFlashZ(null),700);setTimeout(()=>setToast(null),1800);
@@ -302,11 +305,11 @@ function RubroMap(){
       <style>{CSS}</style>
       {toast&&<div style={{position:"fixed",bottom:24,left:"50%",zIndex:9999,pointerEvents:"none",animation:"ta 1.8s ease forwards",background:"#1A1A1A",border:"2px solid "+C.red,borderRadius:7,padding:"8px 22px",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#FFF",transform:"translateX(-50%)"}}>{toast}</div>}
       <PossessionModal show={showPM} setPossMode={setPossMode} setShowPossModal={setShowPM}/>
-      <GoalModal goalModal={goalModal} setGoalModal={setGoalModal} registerWithData={(aid,zid,extra)=>regData(aid,zid,extra,goalModal?.x,goalModal?.y)} setScore={setScore}/>
+      <GoalModal goalModal={goalModal} setGoalModal={setGoalModal} registerWithData={(aid,zid,extra,gx,gy)=>regData(aid,zid,extra,goalModal?.x,goalModal?.y,gx,gy)} setScore={setScore}/>
       <PenaltyModal penaltyModal={penaltyModal} setPenaltyModal={setPenaltyModal} onConfirm={handlePenaltyConfirm}/>
 
       <header ref={headerRef} style={{
-        backgroundImage:`linear-gradient(rgba(20,20,20,.83),rgba(20,20,20,.83)),url(${fundo1Img})`,
+        backgroundImage:`linear-gradient(rgba(20,20,20,.45),rgba(20,20,20,.45)),url(${fundo1Img})`,
         backgroundSize:"cover",backgroundPosition:"center",
         display:"flex",alignItems:"center",flexWrap:"wrap",gap:8,padding:"6px 14px",
         flexShrink:0,borderBottom:"1px solid #2A2A2A",position:"relative",
@@ -314,7 +317,7 @@ function RubroMap(){
         <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
           <img src={"data:image/png;base64,"+LOGO_B64} style={{width:26,height:26,objectFit:"contain"}} alt="CRF"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:4,color:"#FFF",lineHeight:1}}>RUBROMAP</span>
-          <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:9,color:"#555",fontWeight:600,alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{__APP_VERSION__}</span>
+          <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:9,color:"#555",fontWeight:600,alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{APP_VERSION}</span>
         </div>
         <Div/>
         <div style={{flexShrink:0,position:"relative"}}>
@@ -531,6 +534,9 @@ function RubroMap(){
                 <SoberCard title="PLACAR" style={{flex:1}}><div style={{display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 0"}}><div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.red,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>FLAMENGO</div><div style={{fontFamily:"'Bebas Neue'",fontSize:44,color:C.red,lineHeight:1}}>{score.fla}</div></div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#E0E0E0"}}>×</div><div style={{textAlign:"center"}}><div style={{fontSize:8,color:"#6B7280",letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>ADVERSÁRIO</div><div style={{fontFamily:"'Bebas Neue'",fontSize:44,color:"#6B7280",lineHeight:1}}>{score.adv}</div></div></div></SoberCard>
                 <SoberCard title="EXPORTAR" style={{flex:1}}><div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center",padding:"8px 0"}}><div style={{fontSize:11,color:"#6B7280",fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{hist.length} eventos registrados</div><div style={{display:"flex",gap:8}}><button onClick={()=>exportData("csv")} style={{...lBtn(true),fontSize:14,padding:"8px 18px"}}>EXPORTAR CSV</button><button onClick={()=>exportData("xml")} style={{...lBtn(false),fontSize:14,padding:"8px 18px"}}>EXPORTAR XML</button></div></div></SoberCard>
               </div>
+              <SoberCard title="MAPA DE GOL" style={{marginBottom:14}}>
+                <GoalMapStats hist={hist}/>
+              </SoberCard>
               {SECTORS.map(s=>(
                 <div key={s.id} style={{marginBottom:14}}>
                   <div style={{fontSize:12,color:s.color,letterSpacing:3,marginBottom:7,fontFamily:"'Bebas Neue'",borderBottom:"1px solid #E0E0E0",paddingBottom:4}}>{s.label.toUpperCase()}</div>

@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { C }                from "../../constants/colors";
 import { getMeta, fmtVideo } from "../../utils/format";
 
