@@ -8,10 +8,6 @@ const POSITIONS = [
   { id:"BL", label:"Canto\nEsq-Baixo" }, { id:"BC", label:"Centro\nBaixo"   }, { id:"BR", label:"Canto\nDir-Baixo" },
 ];
 
-/**
- * side = "home" → Flamengo's penalty (select where it was kicked → result)
- * side = "away" → Opponent's penalty (auto-assign GK → select where opponent kicked → result)
- */
 export default function PenaltyModal({ penaltyModal, setPenaltyModal, onConfirm }) {
   const [step, setStep]   = useState("position"); // "position" | "result"
   const [pos,  setPos]    = useState(null);

@@ -13,10 +13,7 @@ const CSS_IMG_W = `${(NW / NH * 100).toFixed(3)}%`;
 const CSS_IMG_H = `${(NH / NW * 100).toFixed(3)}%`;
 const CW = 600, CH = Math.round(CW * NW / NH); // canvas 600×396
 
-/* ──────────────────────────────────────────────────────────────
-   Paleta profissional: azul frio → teal → verde → amarelo → laranja → vermelho
-   Mesmo conceito visual do SofaScore / WyScout
-   ────────────────────────────────────────────────────────────── */
+// azul frio → teal → verde → amarelo → laranja → vermelho
 function heatColor(t) {
   const stops = [
     [0.00, [ 20,  80, 200]],   // azul frio  (rarissimo)
@@ -37,12 +34,6 @@ function heatColor(t) {
   return stops[stops.length - 1][1];
 }
 
-/* ──────────────────────────────────────────────────────────────
-   KDE (Kernel Density Estimation) com gaussiana 2D:
-   1. Cada ponto distribui influência em uma grade
-   2. A grade é normalizada pelo valor máximo → hotspot = 1.0
-   3. Interpolação bilinear na renderização → sem pixelação
-   ────────────────────────────────────────────────────────────── */
 function HeatCanvas({ hist, filterAct }) {
   const canvasRef = useRef(null);
 

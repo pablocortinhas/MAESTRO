@@ -2,10 +2,6 @@ import { C }       from "../../constants/colors";
 import camisa1Img   from "../../../imagens/camisa_1.png";
 import camisaGLImg  from "../../../imagens/camisa_GL.png";
 
-/**
- * Shows every player as a jersey image + name below.
- * Clicking selects/deselects that player to receive the next action.
- */
 export default function PlayerSelector({ players, selPl, setSelPl }) {
   return (
     <div style={{

@@ -1,6 +1,5 @@
 import { C } from "../constants/colors";
 
-/** Button style — active=true → red/filled, false → light/outlined */
 export const lBtn = (active) => {
   if (active) return {
     background: C.red,   border: `1px solid ${C.redDk}`,
@@ -18,7 +17,6 @@ export const lBtn = (active) => {
   };
 };
 
-/** Filter button (heatmap sidebar) */
 export const filtBtn = (active, color) => ({
   background:  active ? color + "18" : "transparent",
   border:      `1px solid ${active ? color : C.bdr2}`,
