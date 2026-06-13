@@ -12,10 +12,10 @@ const CAMPOS = Object.entries(_camposGlob)
   .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
   .map(([, mod], i) => ({ id: i + 1, src: mod.default, label: `Campo ${i + 1}` }));
 
-const LS_DIM    = "rubromap_dim_opacity";
-const LS_CAMPO  = "rubromap_campo_idx";
-const LS_FORM   = cat => `rubromap_formation_${cat}`;
-const LS_BOUNDS = "rubromap_field_bounds";
+const LS_DIM    = "maestro_dim_opacity";
+const LS_CAMPO  = "maestro_campo_idx";
+const LS_FORM   = cat => `maestro_formation_${cat}`;
+const LS_BOUNDS = "maestro_field_bounds";
 
 const DEFAULT_BOUNDS = { x0: 0.03, y0: 0.05, x1: 0.97, y1: 0.95 };
 

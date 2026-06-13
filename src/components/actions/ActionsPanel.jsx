@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { SECTORS } from "../../constants/sectors";
 import { C }       from "../../constants/colors";
 
-const LS_LAYOUT    = "rubromap_action_layout_v3";
-const LS_SHORTCUTS = "rubromap_action_shortcuts";
+const LS_LAYOUT    = "maestro_action_layout_v3";
+const LS_SHORTCUTS = "maestro_action_shortcuts";
 
 const COLOR_OPTS = [
   "#059669","#DC2626","#C65100","#CA8A04","#E8001C","#374151","#1D4ED8","#7C3AED",

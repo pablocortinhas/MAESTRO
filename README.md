@@ -1,4 +1,4 @@
-# RubroMap — Análise de Desempenho · Clube de Regatas do Flamengo
+# Maestro — Análise de Desempenho · Clube de Regatas do Flamengo
 
 Ferramenta de análise tática em tempo real para registro de ações, heatmap e estatísticas de partidas do Flamengo. Compatível com **Windows 10/11**, **macOS** e **Linux**.
 
@@ -6,7 +6,7 @@ Ferramenta de análise tática em tempo real para registro de ações, heatmap e
 
 ## Índice
 
-1. [O que é o RubroMap](#o-que-é-o-rubromap)
+1. [O que é o Maestro](#o-que-é-o-rubromap)
 2. [Pré-requisitos](#pré-requisitos)
 3. [Instalação](#instalação)
 4. [Como usar](#como-usar)
@@ -15,9 +15,9 @@ Ferramenta de análise tática em tempo real para registro de ações, heatmap e
 
 ---
 
-## O que é o RubroMap
+## O que é o Maestro
 
-O RubroMap é um aplicativo desktop para comissões técnicas registrarem eventos de partida em tempo real:
+O Maestro é um aplicativo desktop para comissões técnicas registrarem eventos de partida em tempo real:
 
 - **Ao Vivo** — selecione o jogador, toque na zona do campo e registre a ação (passe, chute, falta, etc.)
 - **Heatmap** — visualize onde as ações aconteceram no campo por jogador ou tipo de evento
@@ -79,8 +79,8 @@ Para outras distribuições (Fedora, Arch, etc.) consulte [https://nodejs.org/en
 
 **Opção A — com Git (recomendado):**
 ```bash
-git clone https://github.com/SEU_USUARIO/RUBROMAP.git
-cd RUBROMAP
+git clone https://github.com/SEU_USUARIO/maestro.git
+cd maestro
 ```
 
 **Opção B — sem Git:**
@@ -162,7 +162,7 @@ Para distribuir o app como executável instalável:
 ```bash
 npm run dist:win
 ```
-O instalador será gerado em `out/RubroMap Setup x.x.x.exe`.
+O instalador será gerado em `out/Maestro Setup x.x.x.exe`.
 
 ### macOS (.dmg)
 ```bash
@@ -178,8 +178,8 @@ npm run dist:linux
 ```
 O arquivo `.AppImage` será gerado em `out/`. Para executar:
 ```bash
-chmod +x RubroMap-*.AppImage
-./RubroMap-*.AppImage
+chmod +x Maestro-*.AppImage
+./Maestro-*.AppImage
 ```
 
 ---
@@ -214,4 +214,4 @@ chmod +x RubroMap-*.AppImage
 
 ---
 
-*RubroMap — desenvolvido para o Clube de Regatas do Flamengo*
+*Maestro — desenvolvido para o Clube de Regatas do Flamengo*

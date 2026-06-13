@@ -1,5 +1,5 @@
 {
-  "name": "rubromap",
+  "name": "maestro",
   "version": "1.1.2",
   "private": true,
   "main": "src/main.js",
@@ -25,8 +25,8 @@
     "vite": "^5.4.0"
   },
   "build": {
-    "appId": "com.rubromap.tracker",
-    "productName": "RubroMap",
+    "appId": "com.maestro.tracker",
+    "productName": "Maestro",
     "files": [
       "dist/**/*",
       "src/main.js",

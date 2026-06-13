@@ -85,7 +85,7 @@ function VideoPopup() {
   );
 }
 
-function RubroMap(){
+function Maestro(){
   /* ── Escala proporcional ao tamanho da janela ── */
   const [scale, setScale] = useState(1);
   useEffect(() => {
@@ -285,8 +285,8 @@ function RubroMap(){
 
   const exportData=format=>{
     const rows=hist.map(h=>({Tempo:h.time,IDAtleta:h.player,Apelido:h.playerDisplay||h.player,Numero:h.num||"",Acao:h.label,Zona:h.zone,TempoVideo:h.videoTime!=null?h.videoTime.toFixed(2):""}));
-    if(format==="csv"){const hd=Object.keys(rows[0]||{}).join(",");const bd=rows.map(r=>Object.values(r).map(v=>'"'+v+'"').join(",")).join("\n");download("rubromap_"+catKey.replace(" ","_")+".csv","text/csv",hd+"\n"+bd);}
-    else{const x='<?xml version="1.0" encoding="UTF-8"?>\n<partida categoria="'+catKey+'">\n'+rows.map(r=>'  <evento tempo="'+r.Tempo+'" idAtleta="'+r.IDAtleta+'" apelido="'+r.Apelido+'" numero="'+r.Numero+'" acao="'+r.Acao+'" zona="'+r.Zona+'" tempoVideo="'+r.TempoVideo+'"/>').join("\n")+"\n</partida>";download("rubromap_"+catKey.replace(" ","_")+".xml","application/xml",x);}
+    if(format==="csv"){const hd=Object.keys(rows[0]||{}).join(",");const bd=rows.map(r=>Object.values(r).map(v=>'"'+v+'"').join(",")).join("\n");download("maestro_"+catKey.replace(" ","_")+".csv","text/csv",hd+"\n"+bd);}
+    else{const x='<?xml version="1.0" encoding="UTF-8"?>\n<partida categoria="'+catKey+'">\n'+rows.map(r=>'  <evento tempo="'+r.Tempo+'" idAtleta="'+r.IDAtleta+'" apelido="'+r.Apelido+'" numero="'+r.Numero+'" acao="'+r.Acao+'" zona="'+r.Zona+'" tempoVideo="'+r.TempoVideo+'"/>').join("\n")+"\n</partida>";download("maestro_"+catKey.replace(" ","_")+".xml","application/xml",x);}
   };
 
     const SPEEDS = [1, 2, 3, 4, 5, 6, 7, 10];
@@ -316,7 +316,7 @@ function RubroMap(){
       }}>
         <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
           <img src={"data:image/png;base64,"+LOGO_B64} style={{width:26,height:26,objectFit:"contain"}} alt="CRF"/>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:4,color:"#FFF",lineHeight:1}}>RUBROMAP</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:4,color:"#FFF",lineHeight:1}}>MAESTRO</span>
           <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:9,color:"#555",fontWeight:600,alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{APP_VERSION}</span>
         </div>
         <Div/>
@@ -564,5 +564,5 @@ function RubroMap(){
 
 export default function App() {
   if (window.location.hash === "#video-popup") return <VideoPopup />;
-  return <RubroMap />;
+  return <Maestro />;
 }

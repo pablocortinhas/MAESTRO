@@ -48,7 +48,7 @@ function createVideoWindow() {
     height: 620,
     minWidth: 400,
     minHeight: 300,
-    title: "RubroMap — Vídeo",
+    title: "Maestro — Vídeo",
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
