@@ -1,8 +1,6 @@
 import { useState, useRef } from "react";
 import { C }              from "../../constants/colors";
 import golImg             from "../../../imagens/gol.png";
-import bolaVerdeImg       from "../../../imagens/bola_verde.png";
-import bolaVermelhaImg    from "../../../imagens/bola_vermelha.png";
 
 function getZoneLabel(e, containerRect, imgEl) {
   if (!imgEl) return "";
@@ -29,8 +27,8 @@ export default function GoalModal({ goalModal, setGoalModal, registerWithData, s
   if (!goalModal) return null;
   const { addScore, ballColor, title, actId, zoneId } = goalModal;
 
-  const ballImg    = ballColor === "vermelha" ? bolaVermelhaImg : bolaVerdeImg;
-  const titleColor = ballColor === "vermelha" ? "#DC2626" : C.red;
+  const dotColor   = ballColor === "vermelha" ? "#DC2626" : "#059669";
+  const titleColor = dotColor;
 
   const handleSelect = (posLabel, gx=null, gy=null) => {
     if (addScore === "home") setScore(s => ({ ...s, fla: s.fla + 1 }));
@@ -85,19 +83,19 @@ export default function GoalModal({ goalModal, setGoalModal, registerWithData, s
             alt="gol"
           />
           {ball && (
-            <img
-              src={ballImg}
-              draggable={false}
+            <div
               style={{
                 position:"absolute",
                 left:`calc(${ball.xPct}% - 15px)`,
                 top:`calc(${ball.yPct}% - 15px)`,
                 width:30, height:30,
+                borderRadius:"50%",
+                background: dotColor,
+                border:"2.5px solid rgba(255,255,255,.8)",
+                boxShadow:`0 0 0 3px ${dotColor}55, 0 2px 8px rgba(0,0,0,.7)`,
                 pointerEvents:"none",
-                filter:"drop-shadow(0 2px 6px rgba(0,0,0,.8))",
                 zIndex:10,
               }}
-              alt=""
             />
           )}
         </div>
