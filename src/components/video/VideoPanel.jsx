@@ -39,7 +39,7 @@ export default function VideoPanel({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0, overflow: "hidden" }}>
       <input ref={fileInputRef} type="file" accept="video/*" style={{ display: "none" }} onChange={handleFile} />
 
       {!videoSrc ? (
@@ -51,7 +51,7 @@ export default function VideoPanel({
             ref={videoRef}
             src={videoSrc}
             controls
-            style={{ width: "100%", borderRadius: 6, background: "#000", maxHeight: 200 }}
+            style={{ width: "100%", flex: 1, minHeight: 0, borderRadius: 6, background: "#000" }}
             onTimeUpdate={e => setVideoCurrent(e.target.currentTime)}
             onLoadedMetadata={e => {
               setVideoDuration(e.target.duration);
@@ -163,9 +163,7 @@ function MultiTrack({ hist, setHist, videoRef, videoDuration, videoCurrent, seek
     return [...map.entries()];
   }, [hist]);
 
-  if (tracks.length === 0) return null;
-
-  /* Mutate a single history event */
+  /* Mutate a single history event — hooks always called before any return */
   const updateEvt = useCallback((id, patch) => {
     setHist(p => p.map(h => h.id === id ? { ...h, ...patch } : h));
   }, [setHist]);
@@ -207,6 +205,8 @@ function MultiTrack({ hist, setHist, videoRef, videoDuration, videoCurrent, seek
   const stopDrag = useCallback(() => setDragState(null), []);
 
   const selEvt = selected ? hist.find(h => h.id === selected) : null;
+
+  if (tracks.length === 0) return null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

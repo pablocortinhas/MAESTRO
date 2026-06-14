@@ -23,7 +23,7 @@ import PossessionModal from "./components/modals/PossessionModal";
 import PenaltyModal    from "./components/modals/PenaltyModal";
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@500;600;700&family=Barlow+Condensed:ital,wght@0,700;1,800&family=Oswald:wght@500;600&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:#F3F4F6;color:#1A1A1A;height:100%}
   #root{height:100%}
@@ -127,6 +127,13 @@ function Maestro(){
   const mRef      = useRef(null);
   const pRef      = useRef(null);
   const headerRef = useRef(null);
+
+  /* ── Painéis redimensionáveis ─────────────────────────── */
+  const [leftPct,  setLeftPct]  = useState(52);
+  const [videoPct, setVideoPct] = useState(32);
+  const [histPx,   setHistPx]   = useState(150);
+  const analiseRef    = useRef(null);
+  const rightPanelRef = useRef(null);
   const [headerH, setHeaderH] = useState(48);
   const undoRef   = useRef(() => {});
 
@@ -148,6 +155,32 @@ function Maestro(){
     else if(mRun&&possMode==="adv") pRef.current=setInterval(()=>setPossTime(p=>({...p,adv:p.adv+1})),1000);
     return()=>clearInterval(pRef.current);
   },[mRun,possMode]);
+
+  const startDrag = useCallback((type, e) => {
+    e.preventDefault();
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = type === "lr" ? "col-resize" : "row-resize";
+    const onMove = (ev) => {
+      if (type === "lr" && analiseRef.current) {
+        const r = analiseRef.current.getBoundingClientRect();
+        setLeftPct(Math.max(20, Math.min(75, (ev.clientX - r.left) / r.width * 100)));
+      } else if (type === "video" && rightPanelRef.current) {
+        const r = rightPanelRef.current.getBoundingClientRect();
+        setVideoPct(Math.max(10, Math.min(70, (ev.clientY - r.top) / r.height * 100)));
+      } else if (type === "hist" && rightPanelRef.current) {
+        const r = rightPanelRef.current.getBoundingClientRect();
+        setHistPx(Math.max(80, Math.min(320, r.bottom - ev.clientY)));
+      }
+    };
+    const onUp = () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, []);
 
   /* ── Sync automático com a planilha ─────────────────────────
      Ao iniciar o Electron, lê 2026_Dados_Cadastrais_Base.xlsx e
@@ -295,7 +328,15 @@ function Maestro(){
     if (vRef.current) vRef.current.playbackRate = rate;
   };
 
-  const navItems=[{id:"analise",l:"ANÁLISE"},{id:"mapa",l:"MAPA DE CALOR"},{id:"stats",l:"ESTATÍSTICAS"},{id:"elenco",l:"ELENCO"}];
+  const [navItems, setNavItems] = useState([
+    {id:"analise",l:"ANÁLISE"},
+    {id:"mapa",l:"MAPA DE CALOR"},
+    {id:"stats",l:"ESTATÍSTICAS"},
+    {id:"elenco",l:"ELENCO"},
+  ]);
+  const navDragIdx  = useRef(null);
+  const [navDragging, setNavDragging] = useState(null);
+  const [navDragOver, setNavDragOver] = useState(null);
 
   const W = `${(100/scale).toFixed(4)}vw`;
   const H = `${(100/scale).toFixed(4)}vh`;
@@ -314,10 +355,9 @@ function Maestro(){
         display:"flex",alignItems:"center",flexWrap:"wrap",gap:8,padding:"6px 14px",
         flexShrink:0,borderBottom:"1px solid #2A2A2A",position:"relative",
       }}>
-        <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
-          <img src={"data:image/png;base64,"+LOGO_B64} style={{width:26,height:26,objectFit:"contain"}} alt="CRF"/>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:4,color:"#FFF",lineHeight:1}}>MAESTRO</span>
-          <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:9,color:"#555",fontWeight:600,alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{APP_VERSION}</span>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontStyle:"italic",fontSize:22,letterSpacing:3,color:"#FFF",lineHeight:1,textTransform:"uppercase"}}>MAESTRO</span>
+          <span style={{fontFamily:"'Oswald',sans-serif",fontWeight:500,fontSize:9,color:"#666",alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{APP_VERSION}</span>
         </div>
         <Div/>
         <div style={{flexShrink:0,position:"relative"}}>
@@ -363,17 +403,35 @@ function Maestro(){
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-          {navItems.map(({id,l})=>(
-            <button key={id} onClick={()=>setView(id)} style={{
-              background: view===id ? "#2D2D2D" : "transparent",
-              border: "none",
-              borderBottom: `2px solid ${view===id ? C.red : "transparent"}`,
-              color: view===id ? "#FFF" : "#777",
-              padding: "5px 10px 3px",
-              fontFamily:"'Bebas Neue'", fontSize:12, letterSpacing:1.5,
-              cursor:"pointer", transition:"all .15s", whiteSpace:"nowrap",
-              borderRadius: "3px 3px 0 0",
-            }}>{l}</button>
+          {navItems.map(({id,l},idx)=>(
+            <button
+              key={id}
+              draggable
+              onClick={()=>setView(id)}
+              onDragStart={()=>{ navDragIdx.current=idx; setNavDragging(idx); }}
+              onDragOver={e=>{ e.preventDefault(); if(navDragOver!==idx) setNavDragOver(idx); }}
+              onDrop={e=>{
+                e.preventDefault();
+                const from=navDragIdx.current;
+                if(from===null||from===idx) return;
+                setNavItems(prev=>{ const n=[...prev]; n.splice(idx,0,n.splice(from,1)[0]); return n; });
+                navDragIdx.current=null; setNavDragOver(null);
+              }}
+              onDragEnd={()=>{ navDragIdx.current=null; setNavDragging(null); setNavDragOver(null); }}
+              style={{
+                background: view===id ? "#2D2D2D" : "transparent",
+                border: "none",
+                borderBottom: `2px solid ${navDragOver===idx ? C.red+"99" : view===id ? C.red : "transparent"}`,
+                borderLeft: navDragOver===idx&&navDragging!==idx ? `2px solid ${C.red}88` : "2px solid transparent",
+                color: view===id ? "#FFF" : "#777",
+                padding: "5px 10px 3px",
+                fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:11, letterSpacing:1.2,
+                cursor:"grab", transition:"opacity .1s,border-color .1s", whiteSpace:"nowrap",
+                borderRadius: "3px 3px 0 0",
+                opacity: navDragging===idx ? 0.4 : 1,
+                userSelect:"none",
+              }}
+            >{l}</button>
           ))}
         </div>
         <div style={{flex:1}}/>
@@ -382,10 +440,10 @@ function Maestro(){
       <main style={{flex:1,overflow:"hidden",padding:"8px 10px",display:"flex",flexDirection:"column"}}>
 
         {view==="analise"&&(
-          <div style={{display:"flex",gap:8,flex:1,minHeight:0}}>
+          <div ref={analiseRef} style={{display:"flex",gap:0,flex:1,minHeight:0}}>
 
             {/* ── Esquerda: Campo + Banco ── */}
-            <div style={{flex:"0 0 52%",display:"flex",flexDirection:"column",gap:6,overflow:"auto"}}>
+            <div style={{flex:`0 0 ${leftPct}%`,display:"flex",flexDirection:"column",gap:6,overflow:"auto"}}>
               <FieldBoard
                 flashZ={flashZ}
                 players={players}
@@ -398,11 +456,19 @@ function Maestro(){
               />
             </div>
 
+            {/* ── Divisor esquerda/direita ── */}
+            <div
+              onMouseDown={e=>startDrag("lr",e)}
+              style={{width:8,flexShrink:0,cursor:"col-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
+            >
+              <div style={{width:3,height:"50%",background:"#D4D4D4",borderRadius:2}}/>
+            </div>
+
             {/* ── Direita: Vídeo (topo) → Ações (meio/baixo) → Histórico ── */}
-            <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:7,overflow:"hidden"}}>
+            <div ref={rightPanelRef} style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:0,overflow:"hidden"}}>
 
               {/* Vídeo — parte superior */}
-              <div style={{flex:"0 0 32%",minHeight:0}}>
+              <div style={{flex:`0 0 ${videoPct}%`,minHeight:0}}>
                 <SoberCard title="VÍDEO" style={{height:"100%",minHeight:0}}
                   headerRight={vSrc && (
                     <div style={{display:"flex",alignItems:"center",gap:3}}>
@@ -422,6 +488,14 @@ function Maestro(){
                 >
                   <VideoPanel videoRef={vRef} videoSrc={vSrc} setVideoSrc={setVSrc} videoCurrent={vCur} setVideoCurrent={setVCur} videoDuration={vDur} setVideoDuration={setVDur} hist={hist} setHist={setHist} playbackRate={playbackRate}/>
                 </SoberCard>
+              </div>
+
+              {/* Divisor vídeo/ações */}
+              <div
+                onMouseDown={e=>startDrag("video",e)}
+                style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
+              >
+                <div style={{height:3,width:"50%",background:"#D4D4D4",borderRadius:2}}/>
               </div>
 
               {/* Ações — do meio para baixo, preenche totalmente sem scroll */}
@@ -457,8 +531,16 @@ function Maestro(){
                 <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} editTool={editTool} setEditTool={setEditTool}/>
               </SoberCard>
 
+              {/* Divisor ações/histórico */}
+              <div
+                onMouseDown={e=>startDrag("hist",e)}
+                style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
+              >
+                <div style={{height:3,width:"50%",background:"#D4D4D4",borderRadius:2}}/>
+              </div>
+
               {/* Histórico — base */}
-              <div style={{height:150,flexShrink:0,background:"#FFF",border:"1px solid #E0E0E0",borderRadius:8,boxShadow:"0 1px 4px rgba(0,0,0,.07)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              <div style={{height:histPx,flexShrink:0,background:"#FFF",border:"1px solid #E0E0E0",borderRadius:8,boxShadow:"0 1px 4px rgba(0,0,0,.07)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
                 <div style={{padding:"5px 12px",borderBottom:"1px solid #E0E0E0",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:4}}>
                   <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#6B7280"}}>HISTÓRICO <span style={{color:C.red}}>{hist.length > 0 ? `(${hist.length})` : ""}</span></span>
                   <div style={{display:"flex",gap:4}}>
