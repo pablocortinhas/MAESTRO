@@ -165,14 +165,31 @@ function Maestro(){
     try { localStorage.setItem(LS_PANELS, JSON.stringify(panelLayout)); } catch {}
   }, [panelLayout]);
 
-  const swapPanels = (idA, idB) => setPanelLayout(prev => {
-    const a = prev.find(p => p.id === idA), b = prev.find(p => p.id === idB);
-    if (!a || !b || idA === idB) return prev;
-    return prev.map(p => {
-      if (p.id === idA) return { ...p, col:b.col, order:b.order };
-      if (p.id === idB) return { ...p, col:a.col, order:a.order };
-      return p;
+  /* Move um painel para (col,order), reorganizando os demais — permite
+     desequilibrar as colunas (ex.: 3 painéis à esquerda e 2 à direita). */
+  const movePanel = (id, targetCol, targetOrder) => setPanelLayout(prev => {
+    const moving = prev.find(p => p.id === id);
+    if (!moving) return prev;
+    const sameCol = moving.col === targetCol;
+    let next = prev.map(p =>
+      p.id !== id && p.col === moving.col && p.order > moving.order
+        ? { ...p, order: p.order - 1 } : p
+    );
+    const destCount = next.filter(p => p.col === targetCol && p.id !== id).length;
+    const clamped = Math.max(0, Math.min(targetOrder, destCount));
+    next = next.map(p =>
+      p.id !== id && p.col === targetCol && p.order >= clamped
+        ? { ...p, order: p.order + 1 } : p
+    );
+    next = next.map(p => p.id === id ? { ...p, col:targetCol, order:clamped } : p);
+    if (sameCol) return next;
+    // Renormaliza os tamanhos das colunas afetadas para somar 100%
+    [moving.col, targetCol].forEach(col => {
+      const inCol = next.filter(p => p.col === col);
+      const sum = inCol.reduce((s, p) => s + p.size, 0) || 1;
+      next = next.map(p => p.col === col ? { ...p, size: p.size / sum * 100 } : p);
     });
+    return next;
   });
 
   const startPanelResize = (colRef, aboveId, belowId, e) => {
@@ -421,7 +438,7 @@ function Maestro(){
         ),
       };
       case "banco": return {
-        title: "BANCO DE RESERVAS",
+        title: "RESERVAS",
         headerRight: formation.subMode && (
           <span style={{fontSize:10,color:C.red,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>CLIQUE PARA SUBSTITUIR</span>
         ),
@@ -514,7 +531,7 @@ function Maestro(){
         onHeaderDragStart={()=>setDragPanel(panel.id)}
         onHeaderDragOver={(e)=>{ e.preventDefault(); setDragOverPanel(panel.id); }}
         onHeaderDragLeave={()=>setDragOverPanel(null)}
-        onHeaderDrop={(e)=>{ e.preventDefault(); if (dragPanel && dragPanel!==panel.id) swapPanels(dragPanel, panel.id); setDragPanel(null); setDragOverPanel(null); }}
+        onHeaderDrop={(e)=>{ e.preventDefault(); if (dragPanel && dragPanel!==panel.id) movePanel(dragPanel, panel.col, panel.order); setDragPanel(null); setDragOverPanel(null); }}
         onHeaderDragEnd={()=>{ setDragPanel(null); setDragOverPanel(null); }}
       >
         {meta.content}
@@ -538,6 +555,24 @@ function Maestro(){
         );
       }
     });
+    if (dragPanel && !(arr.length===1 && arr[0].id===dragPanel)) {
+      const isOver = dragOverPanel === `end-${col}`;
+      children.push(
+        <div key={`end-${col}`}
+          onDragOver={e=>{ e.preventDefault(); setDragOverPanel(`end-${col}`); }}
+          onDragLeave={()=>setDragOverPanel(null)}
+          onDrop={e=>{ e.preventDefault(); movePanel(dragPanel, col, arr.length); setDragPanel(null); setDragOverPanel(null); }}
+          style={{
+            flexShrink:0, height: isOver ? 36 : 14, marginTop:2,
+            border:`2px dashed ${isOver ? C.red : "#D4D4D4"}`,
+            borderRadius:6, background: isOver ? C.red+"10" : "transparent",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            color:"#AAA", fontFamily:"'Bebas Neue'", fontSize:9, letterSpacing:1,
+            transition:"height .12s",
+          }}
+        >{isOver ? "SOLTE AQUI" : ""}</div>
+      );
+    }
     return children;
   };
 

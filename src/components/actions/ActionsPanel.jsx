@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { SECTORS } from "../../constants/sectors";
 import { C }       from "../../constants/colors";
+import SplitActionButton from "./SplitActionButton";
 
 const LS_LAYOUT    = "maestro_action_layout_v3";
 const LS_SHORTCUTS = "maestro_action_shortcuts";
@@ -62,6 +63,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
   const [layout,     setLayout]    = useState(loadLayout);
   const [shortcuts,  setShortcuts] = useState(loadShortcuts);
 
+  const [testSel,    setTestSel]   = useState(null); // teste do botão par (split)
   const [editTarget, setEditTarget]= useState(null);
   const [editName,   setEditName]  = useState("");
   const [capturing,  setCapturing] = useState(false);
@@ -255,6 +257,17 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
           {TOOLS.find(t => t.id === editTool)?.desc}
         </div>
       )}
+
+      {/* ── Teste: botão par (split) ── */}
+      <div style={{ flexShrink:0, height:30 }}>
+        <SplitActionButton
+          posLabel="FINALIZAÇÃO POS." negLabel="FINALIZAÇÃO NEG."
+          posColor="#059669" negColor="#DC2626"
+          selected={testSel}
+          onSelectPos={() => setTestSel(s => s === "pos" ? null : "pos")}
+          onSelectNeg={() => setTestSel(s => s === "neg" ? null : "neg")}
+        />
+      </div>
 
       {/* ── Grade 3 colunas ── */}
       <div style={{ flex:1, minHeight:0, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3 }}>
