@@ -16,6 +16,12 @@ const LS_DIM    = "maestro_dim_opacity";
 const LS_CAMPO  = "maestro_campo_idx";
 const LS_FORM   = cat => `maestro_formation_${cat}`;
 const LS_BOUNDS = "maestro_field_bounds";
+const LS_PL_SC  = "maestro_player_shortcuts";
+
+function loadPlShortcuts() {
+  try { const s = localStorage.getItem(LS_PL_SC); if (s) return JSON.parse(s); } catch {}
+  return {};
+}
 
 const DEFAULT_BOUNDS = { x0: 0.03, y0: 0.05, x1: 0.97, y1: 0.95 };
 
@@ -163,6 +169,9 @@ export default function FieldBoard({
   const [calibSaved,   setCalibSaved]   = useState(false);
   const [bounds,       setBounds]       = useState(loadBounds);
   const [dragCorner,   setDragCorner]   = useState(null);
+  const [plShortcuts,  setPlShortcuts]  = useState(loadPlShortcuts);
+  const [assigningSc,  setAssigningSc]  = useState(false);
+  const [scTarget,     setScTarget]     = useState(null);
 
   /* Zonas 50 recalculadas com os limites calibrados */
   const dynZones = computeZones(bounds);
@@ -174,8 +183,46 @@ export default function FieldBoard({
 
   useEffect(() => { try { localStorage.setItem(LS_DIM,   String(dimOpacity)); } catch {} }, [dimOpacity]);
   useEffect(() => { try { localStorage.setItem(LS_CAMPO, String(campoIdx));   } catch {} }, [campoIdx]);
+  useEffect(() => { try { localStorage.setItem(LS_PL_SC, JSON.stringify(plShortcuts)); } catch {} }, [plShortcuts]);
   useEffect(() => { setCampoRot(false); }, [campoIdx]);
   useEffect(() => { setAssigned(applyFormation(players, catKey)); }, [players, catKey]);
+
+  const setPlShortcut = (id, key) => setPlShortcuts(prev => {
+    const next = { ...prev };
+    if (!key) delete next[id]; else next[id] = key;
+    return next;
+  });
+
+  /* ── Captura da tecla enquanto define o atalho de um jogador ── */
+  useEffect(() => {
+    if (scTarget == null) return;
+    const handler = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (e.key === "Escape") { setScTarget(null); return; }
+      if (e.key === "Backspace" || e.key === "Delete") { setPlShortcut(scTarget, ""); setScTarget(null); return; }
+      if (["Control","Shift","Alt","Meta","CapsLock","Tab"].includes(e.key)) return;
+      setPlShortcut(scTarget, e.key.length === 1 ? e.key.toUpperCase() : e.key);
+      setScTarget(null);
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [scTarget]);
+
+  /* ── Uso dos atalhos para selecionar jogadores ── */
+  useEffect(() => {
+    if (assigningSc) return;
+    const handler = (e) => {
+      if (["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)) return;
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      const match = Object.entries(plShortcuts).find(([, k]) => k && (k.toUpperCase() === key || k === e.key));
+      if (!match) return;
+      e.preventDefault();
+      const pid = Number(match[0]);
+      setSelPl(pid === selPl ? null : pid);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [assigningSc, plShortcuts, selPl, setSelPl]);
 
   const saveFormation = () => {
     const data = assigned.map(s => ({ id:s.id, x:s.x, y:s.y, playerId:s.player?.id ?? null }));
@@ -194,6 +241,7 @@ export default function FieldBoard({
   /* ── Drag ── */
   const onPlayerMouseDown = (e, slotId) => {
     if (!showPl) return;
+    if (assigningSc) return; // não arrastar em modo de atalho
     if (selAct && !subMode) return; // não arrastar em modo de registro
     if (subMode) { setSubTarget(slotId); return; }
     if (fixado) return;
@@ -235,6 +283,11 @@ export default function FieldBoard({
   const onPlayerClick = (e, slot) => {
     e.stopPropagation();
     if (draggedRef.current) return;
+    if (assigningSc) {
+      if (!slot.player) return;
+      setScTarget(t => t === slot.player.id ? null : slot.player.id);
+      return;
+    }
     if (selAct && !subMode) {
       const px = slot.x / 100, py = slot.y / 100;
       const zone = dynZones.find(z => px >= z.x1 && px < z.x2 && py >= z.y1 && py < z.y2) || dynZones[22];
@@ -292,8 +345,11 @@ export default function FieldBoard({
             <button onClick={() => { setFixado(f=>!f); setSubMode(false); setSubTarget(null); }} style={{ ...lBtn(fixado), fontSize:11, padding:"3px 9px" }}>
               {fixado ? "DESBLOQ." : "FIXAR"}
             </button>
-            <button onClick={() => { setSubMode(s=>!s); setSubTarget(null); }} style={{ ...lBtn(subMode), fontSize:11, padding:"3px 9px" }}>
+            <button onClick={() => { setSubMode(s=>!s); setSubTarget(null); setAssigningSc(false); setScTarget(null); }} style={{ ...lBtn(subMode), fontSize:11, padding:"3px 9px" }}>
               {subMode ? "CANCELAR" : "SUBSTITUIR"}
+            </button>
+            <button onClick={() => { setAssigningSc(s=>!s); setScTarget(null); setSubMode(false); setSubTarget(null); }} style={{ ...lBtn(assigningSc), fontSize:11, padding:"3px 9px" }}>
+              {assigningSc ? "CONCLUIR" : "ATALHOS"}
             </button>
             <button onClick={reset} style={{ background:"#F5F5F5", border:"1px solid #D4D4D4", color:"#888", borderRadius:5, padding:"3px 9px", fontFamily:"'Bebas Neue'", fontSize:11, letterSpacing:2, cursor:"pointer" }}>
               RESET
@@ -340,6 +396,11 @@ export default function FieldBoard({
         {subMode && (
           <span style={{ fontSize:10, color:C.red, fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>
             {subTarget ? "Escolha no banco" : "Clique no jogador"}
+          </span>
+        )}
+        {assigningSc && (
+          <span style={{ fontSize:10, color:C.red, fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>
+            {scTarget != null ? "Pressione a tecla (ESC cancela, ⌫ remove)" : "Clique num jogador para definir o atalho"}
           </span>
         )}
 
@@ -534,7 +595,9 @@ export default function FieldBoard({
         {showPl && (
           <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:4 }}>
             {assigned.map(slot => {
-              const isSel = slot.player?.id != null && slot.player.id === selPl;
+              const isSel  = slot.player?.id != null && slot.player.id === selPl;
+              const scKey  = slot.player?.id != null ? plShortcuts[slot.player.id] : null;
+              const isScT  = slot.player?.id != null && slot.player.id === scTarget;
               return (
                 <div key={slot.id}
                   onMouseDown={e => onPlayerMouseDown(e, slot.id)}
@@ -544,14 +607,23 @@ export default function FieldBoard({
                     left:slot.x+"%", top:slot.y+"%",
                     transform:"translate(-50%,-50%)",
                     pointerEvents:"auto",
-                    cursor: selAct ? "crosshair" : fixado ? "default" : subMode ? "pointer" : "grab",
+                    cursor: assigningSc ? "pointer" : selAct ? "crosshair" : fixado ? "default" : subMode ? "pointer" : "grab",
                     zIndex: draggingId === slot.id ? 10 : 2,
                     display:"flex", flexDirection:"column", alignItems:"center", gap:1,
                     opacity: selPl !== null && slot.player?.id != null && slot.player.id !== selPl ? dimOpacity : 1,
                     transition:"opacity .2s",
-                    filter: subTarget===slot.id ? `drop-shadow(0 0 6px ${C.red})` : isSel ? `drop-shadow(0 0 5px ${C.gold})` : "drop-shadow(0 1px 3px rgba(0,0,0,.6))",
+                    filter: isScT ? "drop-shadow(0 0 6px #FFE000)" : subTarget===slot.id ? `drop-shadow(0 0 6px ${C.red})` : isSel ? `drop-shadow(0 0 5px ${C.gold})` : "drop-shadow(0 1px 3px rgba(0,0,0,.6))",
                   }}
                 >
+                  {scKey && (
+                    <span style={{
+                      position:"absolute", top:-4, left:-4, zIndex:1,
+                      background:"#1A1A1A", color:"#FFE000",
+                      fontFamily:"monospace", fontSize:9, fontWeight:700,
+                      borderRadius:3, padding:"0 3px", lineHeight:"13px",
+                      border:"1px solid #FFE000",
+                    }}>{scKey}</span>
+                  )}
                   <img src={jerseyFor(slot)} draggable={false} style={{ width:38, height:38, objectFit:"contain" }}/>
                   <div style={{
                     background: isSel ? C.gold+"DD" : "rgba(0,0,0,.82)",
