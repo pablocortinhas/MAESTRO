@@ -22,6 +22,8 @@ const SHORT = {
 };
 const sl = (p, sub) => { const s = SHORT[p] || p; return sub ? `${s} ${sub}` : s; };
 
+const BTN_MIN_H = 32; // todos os botões partem desse tamanho; só crescem em altura, nunca em largura
+
 const CTRL = {
   background:"none", border:"1px solid #D4D4D4", borderRadius:3,
   padding:"2px 8px", cursor:"pointer", fontSize:10, color:C.txtM,
@@ -165,8 +167,8 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
       <button key={btn.id}
         onClick={() => setSelAct(btn.id === selAct ? null : btn.id)}
         style={{
-          flex:1, minHeight:0,
-          padding:"2px 4px", width:"100%", position:"relative",
+          flex:"0 0 auto", minHeight:BTN_MIN_H,
+          padding:"4px 4px", width:"100%", position:"relative", boxSizing:"border-box",
           background: sel ? ac : ac + "12",
           border: `2px solid ${sel ? ac : ac + "44"}`,
           borderRadius:6, cursor:"pointer", transition:"all .12s",
@@ -213,8 +215,8 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
         } : undefined}
         onDragEnd={isMover ? () => { setDragSrc(null); setDragOver(null); } : undefined}
         style={{
-          flex:1, minHeight:0,
-          padding:"2px 4px", width:"100%", position:"relative",
+          flex:"0 0 auto", minHeight:BTN_MIN_H,
+          padding:"4px 4px", width:"100%", position:"relative", boxSizing:"border-box",
           background: isDragOver ? ac + "44" : isTarget ? ac + "28" : ac + "12",
           border: isDragOver
             ? `2px dashed ${ac}`
@@ -259,7 +261,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
       )}
 
       {/* ── Teste: botão par (split) ── */}
-      <div style={{ flexShrink:0, height:30 }}>
+      <div style={{ flexShrink:0, minHeight:BTN_MIN_H }}>
         <SplitActionButton
           posLabel="FINALIZAÇÃO POS." negLabel="FINALIZAÇÃO NEG."
           posColor="#059669" negColor="#DC2626"
@@ -270,9 +272,9 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
       </div>
 
       {/* ── Grade 3 colunas ── */}
-      <div style={{ flex:1, minHeight:0, display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3 }}>
+      <div style={{ flex:1, minHeight:0, overflow:"auto", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3, alignItems:"start" }}>
         {cols3.map((col, i) => (
-          <div key={i} style={{ display:"flex", flexDirection:"column", gap:3, minHeight:0 }}>
+          <div key={i} style={{ display:"flex", flexDirection:"column", gap:3 }}>
             {col.map(editMode ? renderEditBtn : renderViewBtn)}
           </div>
         ))}
