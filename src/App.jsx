@@ -9,11 +9,13 @@ import { LOGO_B64 }                            from "./assets/base64";
 import { fmt, getMeta, download }              from "./utils/format";
 import { initSt, initZSt, mkPlayers }          from "./utils/dataInit";
 import { lBtn, filtBtn }                       from "./utils/styles";
+import { useFormation }                        from "./hooks/useFormation";
 import SoberCard       from "./components/common/SoberCard";
 import StatCard        from "./components/common/StatCard";
 import GoalMapStats    from "./components/stats/GoalMapStats";
 import FieldMap        from "./components/field/FieldMap";
 import FieldBoard      from "./components/field/FieldBoard";
+import BenchPanel      from "./components/field/BenchPanel";
 import ActionsPanel    from "./components/actions/ActionsPanel";
 import VideoPanel      from "./components/video/VideoPanel";
 import HistPanel       from "./components/history/HistPanel";
@@ -41,6 +43,25 @@ const CSS = `
   select option{background:#FFF;color:#1A1A1A}
   button:focus-visible{outline:2px solid #E8001C;outline-offset:1px}
 `;
+
+const LS_PANELS = "maestro_panel_layout";
+const DEFAULT_PANELS = [
+  { id:"campo",     col:0, order:0, size:62 },
+  { id:"banco",     col:0, order:1, size:38 },
+  { id:"video",     col:1, order:0, size:32 },
+  { id:"acoes",     col:1, order:1, size:48 },
+  { id:"historico", col:1, order:2, size:20 },
+];
+function loadPanelLayout() {
+  try {
+    const s = localStorage.getItem(LS_PANELS);
+    if (s) {
+      const saved = JSON.parse(s);
+      if (Array.isArray(saved) && DEFAULT_PANELS.every(d => saved.some(p => p.id === d.id))) return saved;
+    }
+  } catch {}
+  return DEFAULT_PANELS;
+}
 
 function Div(){return <div style={{width:1,height:22,background:"#2A2A2A",flexShrink:0}}/>;}
 function TopB({onClick,ch}){return <button onClick={onClick} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#999",borderRadius:3,padding:"0 5px",cursor:"pointer",fontSize:14,lineHeight:"18px",fontFamily:"monospace"}}>{ch}</button>;}
@@ -98,6 +119,7 @@ function Maestro(){
   const [catKey,  setCatKey]  = useState("Sub 13");
   const [squads,  setSquads]  = useState(SQUADS_STATIC); // começa com squads.js, atualiza do XLSX
   const [players, setPlayers] = useState(mkPlayers(SQUADS_STATIC["Sub 13"]));
+  const formation = useFormation(players, catKey);
   const [tStats,  setTStats]  = useState(initSt());
   const [tZStats, setTZStats] = useState(initZSt());
   const [selPl,   setSelPl]   = useState(null);
@@ -128,14 +150,58 @@ function Maestro(){
   const pRef      = useRef(null);
   const headerRef = useRef(null);
 
-  /* ── Painéis redimensionáveis ─────────────────────────── */
+  /* ── Painéis redimensionáveis e reordenáveis ──────────── */
   const [leftPct,  setLeftPct]  = useState(52);
-  const [videoPct, setVideoPct] = useState(32);
-  const [histPx,   setHistPx]   = useState(150);
   const analiseRef    = useRef(null);
-  const rightPanelRef = useRef(null);
+  const col0Ref        = useRef(null);
+  const col1Ref        = useRef(null);
+  const [panelLayout, setPanelLayout] = useState(loadPanelLayout);
+  const [dragPanel,     setDragPanel]     = useState(null);
+  const [dragOverPanel, setDragOverPanel] = useState(null);
   const [headerH, setHeaderH] = useState(48);
   const undoRef   = useRef(() => {});
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_PANELS, JSON.stringify(panelLayout)); } catch {}
+  }, [panelLayout]);
+
+  const swapPanels = (idA, idB) => setPanelLayout(prev => {
+    const a = prev.find(p => p.id === idA), b = prev.find(p => p.id === idB);
+    if (!a || !b || idA === idB) return prev;
+    return prev.map(p => {
+      if (p.id === idA) return { ...p, col:b.col, order:b.order };
+      if (p.id === idB) return { ...p, col:a.col, order:a.order };
+      return p;
+    });
+  });
+
+  const startPanelResize = (colRef, aboveId, belowId, e) => {
+    e.preventDefault();
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "row-resize";
+    const rect = colRef.current.getBoundingClientRect();
+    const startY = e.clientY;
+    const above = panelLayout.find(p => p.id === aboveId).size;
+    const below = panelLayout.find(p => p.id === belowId).size;
+    const total = above + below;
+    const onMove = (ev) => {
+      const dy = ((ev.clientY - startY) / rect.height) * 100;
+      const nAbove = Math.max(8, Math.min(total - 8, above + dy));
+      setPanelLayout(prev => prev.map(p => {
+        if (p.id === aboveId) return { ...p, size:nAbove };
+        if (p.id === belowId) return { ...p, size:total - nAbove };
+        return p;
+      }));
+    };
+    const onUp = () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
 
   useEffect(()=>{
     if(!headerRef.current) return;
@@ -159,17 +225,11 @@ function Maestro(){
   const startDrag = useCallback((type, e) => {
     e.preventDefault();
     document.body.style.userSelect = "none";
-    document.body.style.cursor = type === "lr" ? "col-resize" : "row-resize";
+    document.body.style.cursor = "col-resize";
     const onMove = (ev) => {
       if (type === "lr" && analiseRef.current) {
         const r = analiseRef.current.getBoundingClientRect();
         setLeftPct(Math.max(20, Math.min(75, (ev.clientX - r.left) / r.width * 100)));
-      } else if (type === "video" && rightPanelRef.current) {
-        const r = rightPanelRef.current.getBoundingClientRect();
-        setVideoPct(Math.max(10, Math.min(70, (ev.clientY - r.top) / r.height * 100)));
-      } else if (type === "hist" && rightPanelRef.current) {
-        const r = rightPanelRef.current.getBoundingClientRect();
-        setHistPx(Math.max(80, Math.min(320, r.bottom - ev.clientY)));
       }
     };
     const onUp = () => {
@@ -341,6 +401,146 @@ function Maestro(){
   const W = `${(100/scale).toFixed(4)}vw`;
   const H = `${(100/scale).toFixed(4)}vh`;
 
+  /* ── Painéis da aba Análise (reordenáveis por arrastar o título) ── */
+  const getPanelMeta = (id) => {
+    switch (id) {
+      case "campo": return {
+        title: "CAMPO",
+        contentStyle: { overflow:"auto" },
+        content: (
+          <FieldBoard
+            flashZ={flashZ} players={players} selPl={selPl} setSelPl={setSelPl}
+            selAct={selAct} onFieldClick={handleFieldClick} catKey={catKey} hist={hist}
+            assigned={formation.assigned} setAssigned={formation.setAssigned}
+            fixado={formation.fixado} setFixado={formation.setFixado}
+            subMode={formation.subMode} setSubMode={formation.setSubMode}
+            subTarget={formation.subTarget} setSubTarget={formation.setSubTarget}
+            uniform={formation.uniform} setUniform={formation.setUniform}
+            formSaved={formation.formSaved} saveFormation={formation.saveFormation} reset={formation.reset}
+          />
+        ),
+      };
+      case "banco": return {
+        title: "BANCO DE RESERVAS",
+        headerRight: formation.subMode && (
+          <span style={{fontSize:10,color:C.red,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>CLIQUE PARA SUBSTITUIR</span>
+        ),
+        cardStyle: formation.subMode ? { borderColor:C.red } : {},
+        contentStyle: { overflow:"auto", ...(formation.subMode ? { background:"#FFF5F5" } : {}) },
+        content: <BenchPanel bench={formation.bench} uniform={formation.uniform} subMode={formation.subMode} doSub={formation.doSub}/>,
+      };
+      case "video": return {
+        title: "VÍDEO",
+        headerRight: vSrc && (
+          <div style={{display:"flex",alignItems:"center",gap:3}}>
+            <span style={{fontSize:9,color:"#888",fontFamily:"'Bebas Neue'",letterSpacing:1,flexShrink:0}}>VEL:</span>
+            {SPEEDS.map(s=>(
+              <button key={s} onClick={()=>applyRate(s)} style={{
+                background: playbackRate===s ? C.red+"18" : "transparent",
+                border:`1px solid ${playbackRate===s?C.red:"#444"}`,
+                color: playbackRate===s ? C.red : "#999",
+                borderRadius:2, padding:"0 5px",
+                fontFamily:"'Bebas Neue'", fontSize:9, letterSpacing:.5,
+                cursor:"pointer", flexShrink:0,
+              }}>{s}×</button>
+            ))}
+          </div>
+        ),
+        content: <VideoPanel videoRef={vRef} videoSrc={vSrc} setVideoSrc={setVSrc} videoCurrent={vCur} setVideoCurrent={setVCur} videoDuration={vDur} setVideoDuration={setVDur} hist={hist} setHist={setHist} playbackRate={playbackRate}/>,
+      };
+      case "acoes": return {
+        title: "AÇÕES",
+        headerRight: (
+          <div style={{display:"flex",gap:3,alignItems:"center"}}>
+            {editActMode&&[
+              {id:"cor",label:"COR"},
+              {id:"nome",label:"NOME"},
+              {id:"mover",label:"MOVER"},
+              {id:"atalho",label:"ATALHO"},
+            ].map(t=>(
+              <button key={t.id}
+                onClick={()=>setEditTool(e=>e===t.id?null:t.id)}
+                style={{
+                  background:editTool===t.id?C.red:"transparent",
+                  border:`1px solid ${editTool===t.id?C.red:"#D4D4D4"}`,
+                  color:editTool===t.id?"#FFF":"#6B7280",
+                  borderRadius:4,padding:"1px 8px",
+                  fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",
+                }}
+              >{t.label}</button>
+            ))}
+            <button
+              onClick={()=>{setEditActMode(e=>!e);if(editActMode)setEditTool(null);}}
+              style={{background:editActMode?"#E8001C":"transparent",border:`1px solid ${editActMode?"#E8001C":"#D4D4D4"}`,color:editActMode?"#FFF":"#6B7280",borderRadius:4,padding:"1px 8px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer"}}
+            >{editActMode?"CONCLUIR":"EDITAR"}</button>
+          </div>
+        ),
+        content: <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} editTool={editTool} setEditTool={setEditTool}/>,
+      };
+      case "historico": return {
+        title: <>HISTÓRICO {hist.length > 0 && <span style={{color:C.red}}>({hist.length})</span>}</>,
+        headerRight: (
+          <div style={{display:"flex",gap:4}}>
+            <button
+              onClick={()=>hist.length>0&&deleteHistEntry(hist[0].id)}
+              title="Desfazer última ação (Ctrl+Z)"
+              style={{background:"transparent",border:"1px solid #D4D4D4",color:"#6B7280",borderRadius:4,padding:"1px 7px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",opacity:hist.length>0?1:.4}}
+            >⟲ DESFAZER</button>
+            <button
+              onClick={clearAll}
+              title="Limpar todos os dados da sessão"
+              style={{background:"#FFF0F0",border:"1px solid #E8001C44",color:"#E8001C",borderRadius:4,padding:"1px 7px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",opacity:hist.length>0?1:.5}}
+            >LIMPAR TUDO</button>
+          </div>
+        ),
+        contentStyle: { overflowY:"auto", padding:"5px 8px" },
+        content: <HistPanel hist={hist} onDeleteEntry={deleteHistEntry} videoRef={vRef} videoDuration={vDur}/>,
+      };
+      default: return {};
+    }
+  };
+
+  const renderPanel = (panel) => {
+    const meta = getPanelMeta(panel.id);
+    return (
+      <SoberCard
+        title={meta.title}
+        headerRight={meta.headerRight}
+        style={{ height:"100%", minHeight:0, ...meta.cardStyle }}
+        contentStyle={meta.contentStyle}
+        draggable
+        dragging={dragPanel===panel.id}
+        dragOver={dragOverPanel===panel.id && dragPanel!==panel.id}
+        onHeaderDragStart={()=>setDragPanel(panel.id)}
+        onHeaderDragOver={(e)=>{ e.preventDefault(); setDragOverPanel(panel.id); }}
+        onHeaderDragLeave={()=>setDragOverPanel(null)}
+        onHeaderDrop={(e)=>{ e.preventDefault(); if (dragPanel && dragPanel!==panel.id) swapPanels(dragPanel, panel.id); setDragPanel(null); setDragOverPanel(null); }}
+        onHeaderDragEnd={()=>{ setDragPanel(null); setDragOverPanel(null); }}
+      >
+        {meta.content}
+      </SoberCard>
+    );
+  };
+
+  const renderColumn = (col, colRef) => {
+    const arr = panelLayout.filter(p=>p.col===col).sort((a,b)=>a.order-b.order);
+    const children = [];
+    arr.forEach((p,i) => {
+      children.push(<div key={p.id} style={{flex:`0 0 ${p.size}%`,minHeight:0}}>{renderPanel(p)}</div>);
+      if (i < arr.length-1) {
+        children.push(
+          <div key={p.id+"-div"}
+            onMouseDown={e=>startPanelResize(colRef,p.id,arr[i+1].id,e)}
+            style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
+          >
+            <div style={{height:3,width:"50%",background:"#D4D4D4",borderRadius:2}}/>
+          </div>
+        );
+      }
+    });
+    return children;
+  };
+
   return(
     <div style={{width:W,height:H,zoom:scale,overflow:"hidden",background:"#F3F4F6",color:"#1A1A1A",fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style>
@@ -442,18 +642,8 @@ function Maestro(){
         {view==="analise"&&(
           <div ref={analiseRef} style={{display:"flex",gap:0,flex:1,minHeight:0}}>
 
-            {/* ── Esquerda: Campo + Banco ── */}
-            <div style={{flex:`0 0 ${leftPct}%`,display:"flex",flexDirection:"column",gap:6,overflow:"auto"}}>
-              <FieldBoard
-                flashZ={flashZ}
-                players={players}
-                selPl={selPl}
-                setSelPl={setSelPl}
-                selAct={selAct}
-                onFieldClick={handleFieldClick}
-                catKey={catKey}
-                hist={hist}
-              />
+            <div ref={col0Ref} style={{flex:`0 0 ${leftPct}%`,minWidth:0,display:"flex",flexDirection:"column",gap:0,overflow:"hidden"}}>
+              {renderColumn(0, col0Ref)}
             </div>
 
             {/* ── Divisor esquerda/direita ── */}
@@ -464,102 +654,8 @@ function Maestro(){
               <div style={{width:3,height:"50%",background:"#D4D4D4",borderRadius:2}}/>
             </div>
 
-            {/* ── Direita: Vídeo (topo) → Ações (meio/baixo) → Histórico ── */}
-            <div ref={rightPanelRef} style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:0,overflow:"hidden"}}>
-
-              {/* Vídeo — parte superior */}
-              <div style={{flex:`0 0 ${videoPct}%`,minHeight:0}}>
-                <SoberCard title="VÍDEO" style={{height:"100%",minHeight:0}}
-                  headerRight={vSrc && (
-                    <div style={{display:"flex",alignItems:"center",gap:3}}>
-                      <span style={{fontSize:9,color:"#888",fontFamily:"'Bebas Neue'",letterSpacing:1,flexShrink:0}}>VEL:</span>
-                      {SPEEDS.map(s=>(
-                        <button key={s} onClick={()=>applyRate(s)} style={{
-                          background: playbackRate===s ? C.red+"18" : "transparent",
-                          border:`1px solid ${playbackRate===s?C.red:"#444"}`,
-                          color: playbackRate===s ? C.red : "#999",
-                          borderRadius:2, padding:"0 5px",
-                          fontFamily:"'Bebas Neue'", fontSize:9, letterSpacing:.5,
-                          cursor:"pointer", flexShrink:0,
-                        }}>{s}×</button>
-                      ))}
-                    </div>
-                  )}
-                >
-                  <VideoPanel videoRef={vRef} videoSrc={vSrc} setVideoSrc={setVSrc} videoCurrent={vCur} setVideoCurrent={setVCur} videoDuration={vDur} setVideoDuration={setVDur} hist={hist} setHist={setHist} playbackRate={playbackRate}/>
-                </SoberCard>
-              </div>
-
-              {/* Divisor vídeo/ações */}
-              <div
-                onMouseDown={e=>startDrag("video",e)}
-                style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
-              >
-                <div style={{height:3,width:"50%",background:"#D4D4D4",borderRadius:2}}/>
-              </div>
-
-              {/* Ações — do meio para baixo, preenche totalmente sem scroll */}
-              <SoberCard
-                title="AÇÕES"
-                style={{flex:1,minHeight:0,overflow:"hidden"}}
-                headerRight={
-                  <div style={{display:"flex",gap:3,alignItems:"center"}}>
-                    {editActMode&&[
-                      {id:"cor",label:"COR"},
-                      {id:"nome",label:"NOME"},
-                      {id:"mover",label:"MOVER"},
-                      {id:"atalho",label:"ATALHO"},
-                    ].map(t=>(
-                      <button key={t.id}
-                        onClick={()=>setEditTool(e=>e===t.id?null:t.id)}
-                        style={{
-                          background:editTool===t.id?C.red:"transparent",
-                          border:`1px solid ${editTool===t.id?C.red:"#D4D4D4"}`,
-                          color:editTool===t.id?"#FFF":"#6B7280",
-                          borderRadius:4,padding:"1px 8px",
-                          fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",
-                        }}
-                      >{t.label}</button>
-                    ))}
-                    <button
-                      onClick={()=>{setEditActMode(e=>!e);if(editActMode)setEditTool(null);}}
-                      style={{background:editActMode?"#E8001C":"transparent",border:`1px solid ${editActMode?"#E8001C":"#D4D4D4"}`,color:editActMode?"#FFF":"#6B7280",borderRadius:4,padding:"1px 8px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer"}}
-                    >{editActMode?"CONCLUIR":"EDITAR"}</button>
-                  </div>
-                }
-              >
-                <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} editTool={editTool} setEditTool={setEditTool}/>
-              </SoberCard>
-
-              {/* Divisor ações/histórico */}
-              <div
-                onMouseDown={e=>startDrag("hist",e)}
-                style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
-              >
-                <div style={{height:3,width:"50%",background:"#D4D4D4",borderRadius:2}}/>
-              </div>
-
-              {/* Histórico — base */}
-              <div style={{height:histPx,flexShrink:0,background:"#FFF",border:"1px solid #E0E0E0",borderRadius:8,boxShadow:"0 1px 4px rgba(0,0,0,.07)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
-                <div style={{padding:"5px 12px",borderBottom:"1px solid #E0E0E0",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:4}}>
-                  <span style={{fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,color:"#6B7280"}}>HISTÓRICO <span style={{color:C.red}}>{hist.length > 0 ? `(${hist.length})` : ""}</span></span>
-                  <div style={{display:"flex",gap:4}}>
-                    <button
-                      onClick={()=>hist.length>0&&deleteHistEntry(hist[0].id)}
-                      title="Desfazer última ação (Ctrl+Z)"
-                      style={{background:"transparent",border:"1px solid #D4D4D4",color:"#6B7280",borderRadius:4,padding:"1px 7px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",opacity:hist.length>0?1:.4}}
-                    >⟲ DESFAZER</button>
-                    <button
-                      onClick={clearAll}
-                      title="Limpar todos os dados da sessão"
-                      style={{background:"#FFF0F0",border:"1px solid #E8001C44",color:"#E8001C",borderRadius:4,padding:"1px 7px",fontFamily:"'Bebas Neue'",fontSize:10,letterSpacing:1,cursor:"pointer",opacity:hist.length>0?1:.5}}
-                    >LIMPAR TUDO</button>
-                  </div>
-                </div>
-                <div style={{flex:1,overflowY:"auto",padding:"5px 8px"}}>
-                  <HistPanel hist={hist} onDeleteEntry={deleteHistEntry} videoRef={vRef} videoDuration={vDur}/>
-                </div>
-              </div>
+            <div ref={col1Ref} style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:0,overflow:"hidden"}}>
+              {renderColumn(1, col1Ref)}
             </div>
           </div>
         )}

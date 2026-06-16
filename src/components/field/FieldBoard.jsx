@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { DEFAULT_FORMATION } from "../../constants/squads";
 import { ZONES_50 }          from "../../constants/zones";
 import { C }                 from "../../constants/colors";
 import { lBtn }              from "../../utils/styles";
@@ -14,7 +13,6 @@ const CAMPOS = Object.entries(_camposGlob)
 
 const LS_DIM    = "maestro_dim_opacity";
 const LS_CAMPO  = "maestro_campo_idx";
-const LS_FORM   = cat => `maestro_formation_${cat}`;
 const LS_BOUNDS = "maestro_field_bounds";
 const LS_PL_SC  = "maestro_player_shortcuts";
 
@@ -114,47 +112,21 @@ function PlayerHeat({ hist, selPl }) {
   );
 }
 
-function buildAssigned(players) {
-  const gks    = players.filter(p => p.pos === "Goleiro");
-  const others = players.filter(p => p.pos !== "Goleiro");
-  return DEFAULT_FORMATION.map((slot, i) => ({
-    ...slot,
-    player: i === 0 ? (gks[0] || null) : (others[i - 1] || null),
-  }));
-}
-
-function applyFormation(players, catKey) {
-  const base = buildAssigned(players);
-  try {
-    const raw = localStorage.getItem(LS_FORM(catKey));
-    if (!raw) return base;
-    const saved = JSON.parse(raw);
-    return base.map(slot => {
-      const s = saved.find(x => x.id === slot.id);
-      if (!s) return slot;
-      return { ...slot, x: s.x, y: s.y, player: s.playerId != null ? (players.find(p => p.id === s.playerId) || slot.player) : null };
-    });
-  } catch { return base; }
-}
-
 function Sep() { return <div style={{ width:1, height:16, background:"#D0D0D0", flexShrink:0 }}/>; }
 
 export default function FieldBoard({
   flashZ, players, selPl, setSelPl,
   selAct, onFieldClick, catKey, hist,
+  assigned, setAssigned, fixado, setFixado,
+  subMode, setSubMode, subTarget, setSubTarget,
+  uniform, setUniform, formSaved, saveFormation, reset,
 }) {
   const campoRef   = useRef(null);
   const draggedRef = useRef(false);
 
-  const [assigned,    setAssigned]    = useState(() => applyFormation(players, catKey));
-  const [fixado,      setFixado]      = useState(false);
-  const [subMode,     setSubMode]     = useState(false);
-  const [subTarget,   setSubTarget]   = useState(null);
   const [draggingId,  setDraggingId]  = useState(null);
   const [dragOffset,  setDragOffset]  = useState({ x:0, y:0 });
-  const [uniform,     setUniform]     = useState(1);
   const [showPl,      setShowPl]      = useState(true);
-  const [formSaved,   setFormSaved]   = useState(false);
   const [hoverZone,   setHoverZone]   = useState(null);
   const [dimOpacity,  setDimOpacity]  = useState(() => {
     try { const v = parseFloat(localStorage.getItem(LS_DIM)); return isNaN(v) ? 0.4 : Math.min(0.9, Math.max(0.05, v)); }
@@ -185,7 +157,6 @@ export default function FieldBoard({
   useEffect(() => { try { localStorage.setItem(LS_CAMPO, String(campoIdx));   } catch {} }, [campoIdx]);
   useEffect(() => { try { localStorage.setItem(LS_PL_SC, JSON.stringify(plShortcuts)); } catch {} }, [plShortcuts]);
   useEffect(() => { setCampoRot(false); }, [campoIdx]);
-  useEffect(() => { setAssigned(applyFormation(players, catKey)); }, [players, catKey]);
 
   const setPlShortcut = (id, key) => setPlShortcuts(prev => {
     const next = { ...prev };
@@ -223,13 +194,6 @@ export default function FieldBoard({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [assigningSc, plShortcuts, selPl, setSelPl]);
-
-  const saveFormation = () => {
-    const data = assigned.map(s => ({ id:s.id, x:s.x, y:s.y, playerId:s.player?.id ?? null }));
-    try { localStorage.setItem(LS_FORM(catKey), JSON.stringify(data)); } catch {}
-    setFormSaved(true);
-    setTimeout(() => setFormSaved(false), 2000);
-  };
 
   useEffect(() => {
     if (!showCampoSel) return;
@@ -302,17 +266,6 @@ export default function FieldBoard({
     onFieldClick?.(z.cx, z.cy, z.id);
   }, [onFieldClick]);
 
-  /* ── Substituição ── */
-  const BENCH_ORDER = ["Goleiro","Lateral Direito","Zagueiro","Lateral Esquerdo","Volante","Meia","Ponta","Atacante"];
-  const onFieldIds = new Set(assigned.map(s => s.player?.id).filter(Boolean));
-  const bench      = players
-    .filter(p => !onFieldIds.has(p.id))
-    .sort((a, b) => {
-      const ai = BENCH_ORDER.indexOf(a.pos), bi = BENCH_ORDER.indexOf(b.pos);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
-  const doSub      = pl => { setAssigned(prev => prev.map(s => s.id === subTarget ? { ...s, player:pl } : s)); setSubMode(false); setSubTarget(null); };
-  const reset      = () => { setAssigned(buildAssigned(players)); setFixado(false); setSubMode(false); setSubTarget(null); };
   const jerseyFor  = slot => slot.isGK ? camisaGLImg : (uniform === 1 ? camisa1Img : camisa2Img);
 
   const campoSrc = CAMPOS[campoIdx]?.src;
@@ -641,29 +594,6 @@ export default function FieldBoard({
             })}
           </div>
         )}
-      </div>
-
-      {/* ── Banco ── */}
-      <div style={{ border:`1px solid ${subMode ? C.red : C.bdr}`, borderRadius:6, padding:"7px 10px", background:subMode?"#FFF5F5":"#FAFAFA", transition:"border-color .2s, background .2s" }}>
-        <div style={{ fontSize:11, color:subMode?C.red:C.txtM, fontFamily:"'Bebas Neue'", letterSpacing:2, marginBottom:6 }}>
-          {subMode ? "BANCO — CLIQUE PARA SUBSTITUIR" : "BANCO DE RESERVAS"}
-        </div>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-          {bench.map(pl => (
-            <button key={pl.id} onClick={() => { if (subMode) doSub(pl); }} style={{
-              background:"#FFF", border:`1px solid ${subMode?C.red+"66":C.bdr}`,
-              borderRadius:5, padding:"5px 10px",
-              cursor:subMode?"pointer":"default",
-              fontFamily:"'Bebas Neue'", fontSize:13, letterSpacing:.8,
-              display:"flex", alignItems:"center", gap:6, opacity:subMode?1:.8,
-              boxShadow: subMode ? "0 1px 4px rgba(232,0,28,.15)" : "none",
-            }}>
-              <img src={pl.pos==="Goleiro"?camisaGLImg:(uniform===1?camisa1Img:camisa2Img)} style={{ width:26, height:26, objectFit:"contain" }}/>
-              <span>{pl.number?`#${pl.number} `:""}{pl.nickname||pl.name.split(" ")[0]}</span>
-            </button>
-          ))}
-          {bench.length===0 && <span style={{ fontSize:12, color:C.txtM, fontFamily:"'Rajdhani'", fontWeight:600 }}>Nenhum no banco</span>}
-        </div>
       </div>
     </div>
   );
