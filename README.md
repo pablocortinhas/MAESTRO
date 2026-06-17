@@ -79,8 +79,8 @@ Para outras distribuições (Fedora, Arch, etc.) consulte [https://nodejs.org/en
 
 **Opção A — com Git (recomendado):**
 ```bash
-git clone https://github.com/pablocortinhas/rubromap.git
-cd rubromap
+git clone https://github.com/pablocortinhas/MAESTRO.git
+cd MAESTRO
 ```
 
 **Opção B — sem Git:**
