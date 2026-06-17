@@ -379,7 +379,7 @@ function Maestro(){
     else{const x='<?xml version="1.0" encoding="UTF-8"?>\n<partida categoria="'+catKey+'">\n'+rows.map(r=>'  <evento tempo="'+r.Tempo+'" idAtleta="'+r.IDAtleta+'" apelido="'+r.Apelido+'" numero="'+r.Numero+'" acao="'+r.Acao+'" zona="'+r.Zona+'" tempoVideo="'+r.TempoVideo+'"/>').join("\n")+"\n</partida>";download("maestro_"+catKey.replace(" ","_")+".xml","application/xml",x);}
   };
 
-    const SPEEDS = [1, 2, 3, 4, 5, 6, 7, 10];
+    const SPEEDS = [0.5, 0.7, 1, 2, 3, 4, 5, 6, 7, 10];
   const applyRate = (rate) => {
     setPlaybackRate(rate);
     if (vRef.current) vRef.current.playbackRate = rate;
