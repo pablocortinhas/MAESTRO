@@ -111,7 +111,7 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
         : `${viewFilter.toUpperCase()} — ${displayPlayers.length} atletas`);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 900, padding: "4px 0" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 900, margin: "0 auto", padding: "4px 0", width: "100%" }}>
 
       {/* Category selector */}
       <div style={{ position: "relative" }}>

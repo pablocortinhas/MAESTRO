@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import fundo1Img from "../imagens/fundo1.png";
+import { useState, useEffect, useRef } from "react";
+import fundo1Img      from "../imagens/fundo1.png";
+import wallpaperImg   from "../imagens/Flamengo_Wallpaper.png";
 import { version as APP_VERSION } from "../package.json";
 import { C }                                   from "./constants/colors";
 import { ZONES_50 }                             from "./constants/zones";
@@ -13,6 +14,7 @@ import { useFormation }                        from "./hooks/useFormation";
 import SoberCard       from "./components/common/SoberCard";
 import StatCard        from "./components/common/StatCard";
 import GoalMapStats    from "./components/stats/GoalMapStats";
+import StatsView      from "./components/stats/StatsView";
 import FieldMap        from "./components/field/FieldMap";
 import FieldBoard      from "./components/field/FieldBoard";
 import BenchPanel      from "./components/field/BenchPanel";
@@ -44,20 +46,21 @@ const CSS = `
   button:focus-visible{outline:2px solid #E8001C;outline-offset:1px}
 `;
 
-const LS_PANELS = "maestro_panel_layout";
+const LS_PANELS = "maestro_panel_layout_v3";
+//  Layout padrão: CAMPO | AÇÕES | VÍDEO (3 colunas) + HISTÓRICO sob CAMPO + RESERVAS faixa inferior
 const DEFAULT_PANELS = [
-  { id:"campo",     col:0, order:0, size:62 },
-  { id:"banco",     col:0, order:1, size:38 },
-  { id:"video",     col:1, order:0, size:32 },
-  { id:"acoes",     col:1, order:1, size:48 },
-  { id:"historico", col:1, order:2, size:20 },
+  { id:"campo",     x:0,    y:0,    w:33,   h:68   },
+  { id:"historico", x:0,    y:68.5, w:33,   h:22   },
+  { id:"acoes",     x:33.5, y:0,    w:17.5, h:91   },
+  { id:"video",     x:51.5, y:0,    w:48.5, h:91   },
+  { id:"banco",     x:0,    y:91.5, w:100,  h:8.5  },
 ];
 function loadPanelLayout() {
   try {
     const s = localStorage.getItem(LS_PANELS);
     if (s) {
       const saved = JSON.parse(s);
-      if (Array.isArray(saved) && DEFAULT_PANELS.every(d => saved.some(p => p.id === d.id))) return saved;
+      if (Array.isArray(saved) && DEFAULT_PANELS.every(d => saved.some(p => p.id === d.id && p.x !== undefined))) return saved;
     }
   } catch {}
   return DEFAULT_PANELS;
@@ -110,7 +113,7 @@ function Maestro(){
   /* ── Escala proporcional ao tamanho da janela ── */
   const [scale, setScale] = useState(1);
   useEffect(() => {
-    const update = () => setScale(Math.max(0.6, Math.min(2.5, window.innerWidth / 1280)));
+    const update = () => setScale(Math.max(0.3, Math.min(2.5, window.innerWidth / 1350)));
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -151,13 +154,8 @@ function Maestro(){
   const headerRef = useRef(null);
 
   /* ── Painéis redimensionáveis e reordenáveis ──────────── */
-  const [leftPct,  setLeftPct]  = useState(52);
   const analiseRef    = useRef(null);
-  const col0Ref        = useRef(null);
-  const col1Ref        = useRef(null);
   const [panelLayout, setPanelLayout] = useState(loadPanelLayout);
-  const [dragPanel,     setDragPanel]     = useState(null);
-  const [dragOverPanel, setDragOverPanel] = useState(null);
   const [headerH, setHeaderH] = useState(48);
   const undoRef   = useRef(() => {});
 
@@ -165,49 +163,50 @@ function Maestro(){
     try { localStorage.setItem(LS_PANELS, JSON.stringify(panelLayout)); } catch {}
   }, [panelLayout]);
 
-  /* Move um painel para (col,order), reorganizando os demais — permite
-     desequilibrar as colunas (ex.: 3 painéis à esquerda e 2 à direita). */
-  const movePanel = (id, targetCol, targetOrder) => setPanelLayout(prev => {
-    const moving = prev.find(p => p.id === id);
-    if (!moving) return prev;
-    const sameCol = moving.col === targetCol;
-    let next = prev.map(p =>
-      p.id !== id && p.col === moving.col && p.order > moving.order
-        ? { ...p, order: p.order - 1 } : p
-    );
-    const destCount = next.filter(p => p.col === targetCol && p.id !== id).length;
-    const clamped = Math.max(0, Math.min(targetOrder, destCount));
-    next = next.map(p =>
-      p.id !== id && p.col === targetCol && p.order >= clamped
-        ? { ...p, order: p.order + 1 } : p
-    );
-    next = next.map(p => p.id === id ? { ...p, col:targetCol, order:clamped } : p);
-    if (sameCol) return next;
-    // Renormaliza os tamanhos das colunas afetadas para somar 100%
-    [moving.col, targetCol].forEach(col => {
-      const inCol = next.filter(p => p.col === col);
-      const sum = inCol.reduce((s, p) => s + p.size, 0) || 1;
-      next = next.map(p => p.col === col ? { ...p, size: p.size / sum * 100 } : p);
-    });
-    return next;
-  });
-
-  const startPanelResize = (colRef, aboveId, belowId, e) => {
+  const startPanelMove = (id, e) => {
     e.preventDefault();
     document.body.style.userSelect = "none";
-    document.body.style.cursor = "row-resize";
-    const rect = colRef.current.getBoundingClientRect();
-    const startY = e.clientY;
-    const above = panelLayout.find(p => p.id === aboveId).size;
-    const below = panelLayout.find(p => p.id === belowId).size;
-    const total = above + below;
+    document.body.style.cursor = "grabbing";
+    const panel = panelLayout.find(p => p.id === id);
+    const rect = analiseRef.current.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const origX = panel.x, origY = panel.y, origW = panel.w, origH = panel.h;
     const onMove = (ev) => {
-      const dy = ((ev.clientY - startY) / rect.height) * 100;
-      const nAbove = Math.max(8, Math.min(total - 8, above + dy));
+      const dx = (ev.clientX - startX) / rect.width * 100;
+      const dy = (ev.clientY - startY) / rect.height * 100;
+      setPanelLayout(prev => prev.map(p =>
+        p.id === id
+          ? { ...p, x: Math.max(0, Math.min(100 - origW, origX + dx)), y: Math.max(0, Math.min(100 - origH, origY + dy)) }
+          : p
+      ));
+    };
+    const onUp = () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const startPanelResize = (id, dir, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = dir === "e" ? "col-resize" : dir === "s" ? "row-resize" : "nwse-resize";
+    const panel = panelLayout.find(p => p.id === id);
+    const rect = analiseRef.current.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const { x: ox, y: oy, w: ow, h: oh } = panel;
+    const onMove = (ev) => {
+      const dx = (ev.clientX - startX) / rect.width * 100;
+      const dy = (ev.clientY - startY) / rect.height * 100;
       setPanelLayout(prev => prev.map(p => {
-        if (p.id === aboveId) return { ...p, size:nAbove };
-        if (p.id === belowId) return { ...p, size:total - nAbove };
-        return p;
+        if (p.id !== id) return p;
+        const nw = dir.includes("e") ? Math.max(15, Math.min(100 - ox, ow + dx)) : p.w;
+        const nh = dir.includes("s") ? Math.max(10, Math.min(100 - oy, oh + dy)) : p.h;
+        return { ...p, w: nw, h: nh };
       }));
     };
     const onUp = () => {
@@ -239,25 +238,6 @@ function Maestro(){
     return()=>clearInterval(pRef.current);
   },[mRun,possMode]);
 
-  const startDrag = useCallback((type, e) => {
-    e.preventDefault();
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
-    const onMove = (ev) => {
-      if (type === "lr" && analiseRef.current) {
-        const r = analiseRef.current.getBoundingClientRect();
-        setLeftPct(Math.max(20, Math.min(75, (ev.clientX - r.left) / r.width * 100)));
-      }
-    };
-    const onUp = () => {
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  }, []);
 
   /* ── Sync automático com a planilha ─────────────────────────
      Ao iniciar o Electron, lê 2026_Dados_Cadastrais_Base.xlsx e
@@ -423,6 +403,7 @@ function Maestro(){
     switch (id) {
       case "campo": return {
         title: "CAMPO",
+        centerTitle: true,
         contentStyle: { overflow:"auto" },
         content: (
           <FieldBoard
@@ -439,6 +420,7 @@ function Maestro(){
       };
       case "banco": return {
         title: "RESERVAS",
+        centerTitle: true,
         headerRight: formation.subMode && (
           <span style={{fontSize:10,color:C.red,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>CLIQUE PARA SUBSTITUIR</span>
         ),
@@ -448,6 +430,7 @@ function Maestro(){
       };
       case "video": return {
         title: "VÍDEO",
+        centerTitle: true,
         headerRight: vSrc && (
           <div style={{display:"flex",alignItems:"center",gap:3}}>
             <span style={{fontSize:9,color:"#888",fontFamily:"'Bebas Neue'",letterSpacing:1,flexShrink:0}}>VEL:</span>
@@ -467,12 +450,12 @@ function Maestro(){
       };
       case "acoes": return {
         title: "AÇÕES",
+        centerTitle: true,
         headerRight: (
           <div style={{display:"flex",gap:3,alignItems:"center"}}>
             {editActMode&&[
               {id:"cor",label:"COR"},
               {id:"nome",label:"NOME"},
-              {id:"mover",label:"MOVER"},
               {id:"atalho",label:"ATALHO"},
             ].map(t=>(
               <button key={t.id}
@@ -517,64 +500,6 @@ function Maestro(){
     }
   };
 
-  const renderPanel = (panel) => {
-    const meta = getPanelMeta(panel.id);
-    return (
-      <SoberCard
-        title={meta.title}
-        headerRight={meta.headerRight}
-        style={{ height:"100%", minHeight:0, ...meta.cardStyle }}
-        contentStyle={meta.contentStyle}
-        draggable
-        dragging={dragPanel===panel.id}
-        dragOver={dragOverPanel===panel.id && dragPanel!==panel.id}
-        onHeaderDragStart={()=>setDragPanel(panel.id)}
-        onHeaderDragOver={(e)=>{ e.preventDefault(); setDragOverPanel(panel.id); }}
-        onHeaderDragLeave={()=>setDragOverPanel(null)}
-        onHeaderDrop={(e)=>{ e.preventDefault(); if (dragPanel && dragPanel!==panel.id) movePanel(dragPanel, panel.col, panel.order); setDragPanel(null); setDragOverPanel(null); }}
-        onHeaderDragEnd={()=>{ setDragPanel(null); setDragOverPanel(null); }}
-      >
-        {meta.content}
-      </SoberCard>
-    );
-  };
-
-  const renderColumn = (col, colRef) => {
-    const arr = panelLayout.filter(p=>p.col===col).sort((a,b)=>a.order-b.order);
-    const children = [];
-    arr.forEach((p,i) => {
-      children.push(<div key={p.id} style={{flex:`0 0 ${p.size}%`,minHeight:0}}>{renderPanel(p)}</div>);
-      if (i < arr.length-1) {
-        children.push(
-          <div key={p.id+"-div"}
-            onMouseDown={e=>startPanelResize(colRef,p.id,arr[i+1].id,e)}
-            style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
-          >
-            <div style={{height:3,width:"50%",background:"#D4D4D4",borderRadius:2}}/>
-          </div>
-        );
-      }
-    });
-    if (dragPanel && !(arr.length===1 && arr[0].id===dragPanel)) {
-      const isOver = dragOverPanel === `end-${col}`;
-      children.push(
-        <div key={`end-${col}`}
-          onDragOver={e=>{ e.preventDefault(); setDragOverPanel(`end-${col}`); }}
-          onDragLeave={()=>setDragOverPanel(null)}
-          onDrop={e=>{ e.preventDefault(); movePanel(dragPanel, col, arr.length); setDragPanel(null); setDragOverPanel(null); }}
-          style={{
-            flexShrink:0, height: isOver ? 36 : 14, marginTop:2,
-            border:`2px dashed ${isOver ? C.red : "#D4D4D4"}`,
-            borderRadius:6, background: isOver ? C.red+"10" : "transparent",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            color:"#AAA", fontFamily:"'Bebas Neue'", fontSize:9, letterSpacing:1,
-            transition:"height .12s",
-          }}
-        >{isOver ? "SOLTE AQUI" : ""}</div>
-      );
-    }
-    return children;
-  };
 
   return(
     <div style={{width:W,height:H,zoom:scale,overflow:"hidden",background:"#F3F4F6",color:"#1A1A1A",fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
@@ -587,7 +512,7 @@ function Maestro(){
       <header ref={headerRef} style={{
         backgroundImage:`linear-gradient(rgba(20,20,20,.45),rgba(20,20,20,.45)),url(${fundo1Img})`,
         backgroundSize:"cover",backgroundPosition:"center",
-        display:"flex",alignItems:"center",flexWrap:"wrap",gap:8,padding:"6px 14px",
+        display:"flex",alignItems:"center",flexWrap:"nowrap",gap:8,padding:"6px 14px",
         flexShrink:0,borderBottom:"1px solid #2A2A2A",position:"relative",
       }}>
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
@@ -596,12 +521,12 @@ function Maestro(){
         </div>
         <Div/>
         <div style={{flexShrink:0,position:"relative"}}>
-          <button onClick={()=>setShowCat(s=>!s)} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#E0E0E0",borderRadius:4,padding:"3px 10px",fontFamily:"'Bebas Neue'",fontSize:12,letterSpacing:2,cursor:"pointer"}}>{catKey} {showCat?"▲":"▼"}</button>
+          <button onClick={()=>setShowCat(s=>!s)} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#E0E0E0",borderRadius:4,padding:"3px 10px",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>{catKey} {showCat?"▲":"▼"}</button>
           {showCat&&<div style={{position:"fixed",top:headerH,left:14,zIndex:600,background:"#FFF",border:"1px solid #E0E0E0",borderRadius:8,overflow:"hidden",boxShadow:"0 6px 20px rgba(0,0,0,.18)",minWidth:160}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>{CAT_LIST.map(cat=><button key={cat} onClick={()=>loadCat(cat)} style={{background:cat===catKey?C.red:"transparent",border:"none",borderRight:"1px solid #E0E0E0",borderBottom:"1px solid #E0E0E0",color:cat===catKey?"#FFF":"#1A1A1A",padding:"9px 8px",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,textAlign:"center"}}>{cat}</button>)}</div></div>}
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:C.red,opacity:.8}}>FLA</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:C.red,opacity:.8}}>FLA</span>
           <TopB onClick={()=>setScore(s=>({...s,fla:Math.max(0,s.fla-1)}))} ch="−"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:C.red,minWidth:22,textAlign:"center",lineHeight:1}}>{score.fla}</span>
           <TopB onClick={()=>setScore(s=>({...s,fla:s.fla+1}))} ch="+"/>
@@ -609,21 +534,21 @@ function Maestro(){
           <TopB onClick={()=>setScore(s=>({...s,adv:s.adv+1}))} ch="+"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#DDD",minWidth:22,textAlign:"center",lineHeight:1}}>{score.adv}</span>
           <TopB onClick={()=>setScore(s=>({...s,adv:Math.max(0,s.adv-1)}))} ch="−"/>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:2,color:"#888",opacity:.8}}>ADV</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#888",opacity:.8}}>ADV</span>
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:C.red,minWidth:24,textAlign:"right"}}>{fp}%</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:C.red,minWidth:28,textAlign:"right"}}>{fp}%</span>
           <div style={{width:72,height:6,background:"#3A3A3A",borderRadius:4,overflow:"hidden"}}>
             <div style={{width:fp+"%",height:"100%",background:C.red,transition:"width .6s"}}/>
           </div>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:10,color:"#AAA",minWidth:24}}>{ap}%</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:"#AAA",minWidth:28}}>{ap}%</span>
           {[{m:"fla",l:"FLA"},{m:"pause",l:"⏸"},{m:"adv",l:"ADV"}].map(({m,l})=>(
             <button key={m} onClick={()=>setPossMode(m)} style={{
               background: possMode===m ? (m==="fla"?C.red : m==="adv"?"#334":"#444") : "#2A2A2A",
               border: `1px solid ${possMode===m ? (m==="adv"?"#556":"transparent") : "#3A3A3A"}`,
-              color: "#FFF", borderRadius:3, padding:"2px 7px",
-              fontFamily:"'Bebas Neue'", fontSize:10, letterSpacing:1, cursor:"pointer",
+              color: "#FFF", borderRadius:3, padding:"2px 8px",
+              fontFamily:"'Bebas Neue'", fontSize:13, letterSpacing:1, cursor:"pointer",
             }}>{l}</button>
           ))}
         </div>
@@ -633,8 +558,8 @@ function Maestro(){
             {mRun && <span style={{width:6,height:6,borderRadius:"50%",background:C.red,flexShrink:0,animation:"pulse .9s ease infinite"}}/>}
             <span style={{fontFamily:"monospace",fontSize:19,color:mRun?C.red:"#888",transition:"color .3s"}}>{fmt(mTime)}</span>
           </div>
-          <button onClick={toggleTimer} style={{...lBtn(mRun),fontSize:11,padding:"3px 10px"}}>{mRun?"PAUSAR":"INICIAR"}</button>
-          <button onClick={()=>{setMRun(false);setMTime(0);setPossMode("pause");}} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#777",borderRadius:5,padding:"3px 9px",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,cursor:"pointer"}}>RESET</button>
+          <button onClick={toggleTimer} style={{...lBtn(mRun),fontSize:14,padding:"3px 12px"}}>{mRun?"PAUSAR":"INICIAR"}</button>
+          <button onClick={()=>{setMRun(false);setMTime(0);setPossMode("pause");}} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#777",borderRadius:5,padding:"3px 10px",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,cursor:"pointer"}}>RESET</button>
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
@@ -660,7 +585,7 @@ function Maestro(){
                 borderLeft: navDragOver===idx&&navDragging!==idx ? `2px solid ${C.red}88` : "2px solid transparent",
                 color: view===id ? "#FFF" : "#777",
                 padding: "5px 10px 3px",
-                fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:11, letterSpacing:1.2,
+                fontFamily:"'Oswald',sans-serif", fontWeight:600, fontSize:14, letterSpacing:1.2,
                 cursor:"grab", transition:"opacity .1s,border-color .1s", whiteSpace:"nowrap",
                 borderRadius: "3px 3px 0 0",
                 opacity: navDragging===idx ? 0.4 : 1,
@@ -675,23 +600,28 @@ function Maestro(){
       <main style={{flex:1,overflow:"hidden",padding:"8px 10px",display:"flex",flexDirection:"column"}}>
 
         {view==="analise"&&(
-          <div ref={analiseRef} style={{display:"flex",gap:0,flex:1,minHeight:0}}>
-
-            <div ref={col0Ref} style={{flex:`0 0 ${leftPct}%`,minWidth:0,display:"flex",flexDirection:"column",gap:0,overflow:"hidden"}}>
-              {renderColumn(0, col0Ref)}
-            </div>
-
-            {/* ── Divisor esquerda/direita ── */}
-            <div
-              onMouseDown={e=>startDrag("lr",e)}
-              style={{width:8,flexShrink:0,cursor:"col-resize",display:"flex",alignItems:"center",justifyContent:"center"}}
-            >
-              <div style={{width:3,height:"50%",background:"#D4D4D4",borderRadius:2}}/>
-            </div>
-
-            <div ref={col1Ref} style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:0,overflow:"hidden"}}>
-              {renderColumn(1, col1Ref)}
-            </div>
+          <div ref={analiseRef} style={{flex:1,minHeight:0,position:"relative"}}>
+            {panelLayout.map(panel => {
+              const meta = getPanelMeta(panel.id);
+              return (
+                <div key={panel.id} style={{position:"absolute",left:`${panel.x}%`,top:`${panel.y}%`,width:`${panel.w}%`,height:`${panel.h}%`}}>
+                  <SoberCard
+                    title={meta.title}
+                    headerRight={meta.headerRight}
+                    centerTitle={meta.centerTitle}
+                    style={{height:"100%",...(meta.cardStyle||{})}}
+                    contentStyle={meta.contentStyle}
+                    onHeaderMouseDown={e=>startPanelMove(panel.id,e)}
+                  >{meta.content}</SoberCard>
+                  {/* Alça: borda direita (largura) */}
+                  <div onMouseDown={e=>startPanelResize(panel.id,"e",e)} style={{position:"absolute",right:-4,top:0,width:8,height:"100%",cursor:"col-resize",zIndex:10}}/>
+                  {/* Alça: borda inferior (altura) */}
+                  <div onMouseDown={e=>startPanelResize(panel.id,"s",e)} style={{position:"absolute",bottom:-4,left:0,height:8,width:"100%",cursor:"row-resize",zIndex:10}}/>
+                  {/* Alça: canto SE (largura + altura) */}
+                  <div onMouseDown={e=>startPanelResize(panel.id,"se",e)} style={{position:"absolute",right:-4,bottom:-4,width:12,height:12,cursor:"nwse-resize",zIndex:11}}/>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -722,15 +652,15 @@ function Maestro(){
             </div>
             <SoberCard title="FILTRAR" style={{width:220,flexShrink:0}} contentStyle={{overflowY:"auto"}}>
               <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                <button onClick={()=>setHeatFilt("all")} style={filtBtn(heatFilt==="all",C.gold)}>TODAS AS AÇÕES</button>
+                <button onClick={()=>setHeatFilt("all")} style={{...filtBtn(heatFilt==="all",C.red),textAlign:"center"}}>TODAS AS AÇÕES</button>
                 {SECTORS.map(s=>(
                   <div key={s.id} style={{marginTop:5}}>
-                    <div style={{fontSize:9,color:s.color,letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:3,borderBottom:"1px solid #E0E0E0",paddingBottom:2}}>{s.label.toUpperCase()}</div>
+                    <div style={{fontSize:9,color:C.txtM,letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:3,borderBottom:"1px solid #E0E0E0",paddingBottom:2}}>{s.label.toUpperCase()}</div>
                     <div style={{display:"flex",flexDirection:"column",gap:2}}>
                       {s.actions.map(a=>a.type==="single"
-                        ?<button key={a.id} onClick={()=>setHeatFilt(a.id)} style={filtBtn(heatFilt===a.id,s.color)}>{a.label}</button>
-                        :[<button key={a.posId} onClick={()=>setHeatFilt(a.posId)} style={filtBtn(heatFilt===a.posId,a.posColor||C.posL)}>{a.label}: {a.posLabel}</button>,
-                          <button key={a.negId} onClick={()=>setHeatFilt(a.negId)} style={filtBtn(heatFilt===a.negId,a.negColor||C.negL)}>{a.label}: {a.negLabel}</button>]
+                        ?<button key={a.id} onClick={()=>setHeatFilt(a.id)} style={{...filtBtn(heatFilt===a.id,C.red),textAlign:"center"}}>{a.label}</button>
+                        :[<button key={a.posId} onClick={()=>setHeatFilt(a.posId)} style={{...filtBtn(heatFilt===a.posId,C.red),textAlign:"center"}}>{a.label}: {a.posLabel}</button>,
+                          <button key={a.negId} onClick={()=>setHeatFilt(a.negId)} style={{...filtBtn(heatFilt===a.negId,C.red),textAlign:"center"}}>{a.label}: {a.negLabel}</button>]
                       )}
                     </div>
                   </div>
@@ -741,27 +671,8 @@ function Maestro(){
         )})()}
 
         {view==="stats"&&(
-          <div style={{flex:1,overflow:"auto"}}>
-            <div style={{maxWidth:1000}}>
-              <div style={{display:"flex",gap:10,marginBottom:14}}>
-                <SoberCard title="PLACAR" style={{flex:1}}><div style={{display:"flex",justifyContent:"space-around",alignItems:"center",padding:"8px 0"}}><div style={{textAlign:"center"}}><div style={{fontSize:8,color:C.red,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>FLAMENGO</div><div style={{fontFamily:"'Bebas Neue'",fontSize:44,color:C.red,lineHeight:1}}>{score.fla}</div></div><div style={{fontFamily:"'Bebas Neue'",fontSize:20,color:"#E0E0E0"}}>×</div><div style={{textAlign:"center"}}><div style={{fontSize:8,color:"#6B7280",letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>ADVERSÁRIO</div><div style={{fontFamily:"'Bebas Neue'",fontSize:44,color:"#6B7280",lineHeight:1}}>{score.adv}</div></div></div></SoberCard>
-                <SoberCard title="EXPORTAR" style={{flex:1}}><div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center",padding:"8px 0"}}><div style={{fontSize:11,color:"#6B7280",fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{hist.length} eventos registrados</div><div style={{display:"flex",gap:8}}><button onClick={()=>exportData("csv")} style={{...lBtn(true),fontSize:14,padding:"8px 18px"}}>EXPORTAR CSV</button><button onClick={()=>exportData("xml")} style={{...lBtn(false),fontSize:14,padding:"8px 18px"}}>EXPORTAR XML</button></div></div></SoberCard>
-              </div>
-              <SoberCard title="MAPA DE GOL" style={{marginBottom:14}}>
-                <GoalMapStats hist={hist}/>
-              </SoberCard>
-              {SECTORS.map(s=>(
-                <div key={s.id} style={{marginBottom:14}}>
-                  <div style={{fontSize:12,color:s.color,letterSpacing:3,marginBottom:7,fontFamily:"'Bebas Neue'",borderBottom:"1px solid #E0E0E0",paddingBottom:4}}>{s.label.toUpperCase()}</div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:5}}>
-                    {s.actions.map(a=>a.type==="single"
-                      ?<StatCard key={a.id} label={a.label} val={tStats[a.id]} color={s.color}/>
-                      :[<StatCard key={a.posId} label={a.label+" "+a.posLabel} val={tStats[a.posId]} color={a.posColor||C.posL}/>,<StatCard key={a.negId} label={a.label+" "+a.negLabel} val={tStats[a.negId]} color={a.negColor||C.negL}/>]
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div style={{flex:1,overflow:"auto",padding:"0 2px"}}>
+            <StatsView hist={hist} tStats={tStats} score={score} catKey={catKey} exportData={exportData} possTime={possTime}/>
           </div>
         )}
 

@@ -79,8 +79,8 @@ Para outras distribuições (Fedora, Arch, etc.) consulte [https://nodejs.org/en
 
 **Opção A — com Git (recomendado):**
 ```bash
-git clone https://github.com/SEU_USUARIO/maestro.git
-cd maestro
+git clone https://github.com/pablocortinhas/rubromap.git
+cd rubromap
 ```
 
 **Opção B — sem Git:**
@@ -151,6 +151,24 @@ Compila o app e abre a versão otimizada no Electron.
 
 - Visualize e gerencie os jogadores de cada categoria
 - Filtre por posição
+
+---
+
+## Transferir configuração de botões entre PCs
+
+A disposição, cores e atalhos dos botões de **Ações** ficam salvos localmente no aparelho. Para usar a mesma configuração em outro PC:
+
+**No PC de origem:**
+1. Abra o app → aba **ANÁLISE** → painel **AÇÕES** → clique **EDITAR**
+2. Clique em **EXPORTAR** → salva o arquivo `rubromap-acoes.json`
+3. Copie esse arquivo para o outro PC (pendrive, e-mail, Google Drive, etc.)
+
+**No PC de destino:**
+1. Clone o repositório e execute `npm install && npm start`
+2. Abra o app → aba **ANÁLISE** → painel **AÇÕES** → clique **EDITAR**
+3. Clique em **IMPORTAR** e selecione o arquivo `rubromap-acoes.json`
+
+O botão **PADRÃO** (verde, em modo EDITAR) salva a configuração atual como padrão local — ela será restaurada mesmo se o app for reinstalado no mesmo PC.
 
 ---
 

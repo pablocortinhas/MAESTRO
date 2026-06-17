@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SECTORS } from "../../constants/sectors";
 import { C }       from "../../constants/colors";
-import SplitActionButton from "./SplitActionButton";
 
 const LS_LAYOUT    = "maestro_action_layout_v3";
 const LS_SHORTCUTS = "maestro_action_shortcuts";
+const LS_DEFAULT   = "maestro_action_default_v1";
 
 const COLOR_OPTS = [
   "#059669","#DC2626","#C65100","#CA8A04","#E8001C","#374151","#1D4ED8","#7C3AED",
@@ -22,7 +22,7 @@ const SHORT = {
 };
 const sl = (p, sub) => { const s = SHORT[p] || p; return sub ? `${s} ${sub}` : s; };
 
-const BTN_MIN_H = 32; // todos os botões partem desse tamanho; só crescem em altura, nunca em largura
+const BTN_H = 36;
 
 const CTRL = {
   background:"none", border:"1px solid #D4D4D4", borderRadius:3,
@@ -31,10 +31,9 @@ const CTRL = {
 };
 
 const TOOLS = [
-  { id:"cor",    label:"COR",    desc:"Clique num botão para mudar a cor"       },
-  { id:"nome",   label:"NOME",   desc:"Clique num botão para renomear"           },
-  { id:"mover",  label:"MOVER",  desc:"Clique num botão para reposicioná-lo"    },
-  { id:"atalho", label:"ATALHO", desc:"Clique num botão para definir o atalho"  },
+  { id:"cor",    label:"COR",    desc:"Clique num botão para mudar a cor"      },
+  { id:"nome",   label:"NOME",   desc:"Clique num botão para renomear"          },
+  { id:"atalho", label:"ATALHO", desc:"Clique num botão para definir o atalho" },
 ];
 
 function buildDefaultLayout() {
@@ -52,7 +51,8 @@ function buildDefaultLayout() {
 }
 
 function loadLayout() {
-  try { const s = localStorage.getItem(LS_LAYOUT); if (s) return JSON.parse(s); } catch {}
+  try { const s = localStorage.getItem(LS_LAYOUT);  if (s) return JSON.parse(s); } catch {}
+  try { const s = localStorage.getItem(LS_DEFAULT); if (s) return JSON.parse(s); } catch {}
   return buildDefaultLayout();
 }
 
@@ -64,13 +64,15 @@ function loadShortcuts() {
 export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, setEditTool }) {
   const [layout,     setLayout]    = useState(loadLayout);
   const [shortcuts,  setShortcuts] = useState(loadShortcuts);
-
-  const [testSel,    setTestSel]   = useState(null); // teste do botão par (split)
   const [editTarget, setEditTarget]= useState(null);
   const [editName,   setEditName]  = useState("");
   const [capturing,  setCapturing] = useState(false);
   const [dragSrc,    setDragSrc]   = useState(null);
   const [dragOver,   setDragOver]  = useState(null);
+  const [addMode,    setAddMode]   = useState(false);
+  const [newLabel,   setNewLabel]  = useState("");
+  const [newColor,   setNewColor]  = useState(COLOR_OPTS[0]);
+  const fileInputRef               = useRef(null);
 
   useEffect(() => {
     try { localStorage.setItem(LS_LAYOUT, JSON.stringify(layout)); } catch {}
@@ -81,7 +83,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
   }, [shortcuts]);
 
   useEffect(() => {
-    if (!editMode) { setEditTarget(null); setCapturing(false); }
+    if (!editMode) { setEditTarget(null); setCapturing(false); setAddMode(false); }
   }, [editMode]);
 
   useEffect(() => {
@@ -107,19 +109,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
   const col0 = layout.filter(b => b.col === 0).sort((a, b) => a.order - b.order);
   const col1 = layout.filter(b => b.col === 1).sort((a, b) => a.order - b.order);
 
-  const moveInCol = (id, dir) => setLayout(prev => {
-    const btn  = prev.find(b => b.id === id);
-    const col  = prev.filter(b => b.col === btn.col).sort((a, b) => a.order - b.order);
-    const idx  = col.findIndex(b => b.id === id);
-    const ni   = idx + dir;
-    if (ni < 0 || ni >= col.length) return prev;
-    const swap = col[ni];
-    return prev.map(b =>
-      b.id === id ? { ...b, order: swap.order } :
-      b.id === swap.id ? { ...b, order: btn.order } : b
-    );
-  });
-
   const swapButtons = (idA, idB) => setLayout(prev => {
     const a = prev.find(b => b.id === idA);
     const b = prev.find(b => b.id === idB);
@@ -131,19 +120,63 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
     });
   });
 
-  const moveToCol = (id, targetCol) => setLayout(prev => {
-    const btn = prev.find(b => b.id === id);
-    if (btn.col === targetCol) return prev;
-    const mo = Math.max(...prev.filter(b => b.col === targetCol).map(b => b.order), -1) + 1;
-    return prev.map(b => b.id === id ? { ...b, col: targetCol, order: mo } : b);
-  });
-
   const setColor    = (id, color) => setLayout(prev => prev.map(b => b.id === id ? { ...b, color } : b));
   const setShortcut = (id, key)   => setShortcuts(prev => {
     const next = { ...prev };
     if (!key) delete next[id]; else next[id] = key;
     return next;
   });
+
+  const deleteButton = (id) => {
+    setLayout(prev => prev.filter(b => b.id !== id));
+    setShortcuts(prev => { const n = { ...prev }; delete n[id]; return n; });
+    if (editTarget === id) setEditTarget(null);
+  };
+
+  const addButton = () => {
+    if (!newLabel.trim()) return;
+    const maxOrder = layout.length > 0 ? Math.max(...layout.map(b => b.order)) : -1;
+    setLayout(prev => [...prev, {
+      id: `custom_${Date.now()}`,
+      label: newLabel.trim().toUpperCase(),
+      color: newColor,
+      col: 0,
+      order: maxOrder + 1,
+    }]);
+    setNewLabel("");
+    setNewColor(COLOR_OPTS[0]);
+    setAddMode(false);
+  };
+
+  const saveAsDefault = () => {
+    try { localStorage.setItem(LS_DEFAULT, JSON.stringify(layout)); } catch {}
+  };
+
+  const exportConfig = () => {
+    const data = JSON.stringify({ layout, shortcuts }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = "rubromap-acoes.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importConfig = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (Array.isArray(data.layout))           setLayout(data.layout);
+        if (data.shortcuts && typeof data.shortcuts === "object") setShortcuts(data.shortcuts);
+      } catch {}
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const applyName = () => {
     if (!editName.trim()) return;
@@ -153,27 +186,44 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
 
   const handleEditClick = (btn) => {
     if (!editTool) return;
+    setAddMode(false);
     setEditTarget(btn.id);
     if (editTool === "nome") setEditName(btn.label);
     if (editTool === "atalho") setCapturing(false);
   };
 
-  /* ── Botão modo visualização ── */
+  const dragEvents = (id) => ({
+    draggable: true,
+    onDragStart: () => setDragSrc(id),
+    onDragOver:  (e) => { e.preventDefault(); setDragOver(id); },
+    onDragLeave: ()  => setDragOver(null),
+    onDrop: (e) => {
+      e.preventDefault();
+      if (dragSrc && dragSrc !== id) swapButtons(dragSrc, id);
+      setDragSrc(null); setDragOver(null);
+    },
+    onDragEnd: () => { setDragSrc(null); setDragOver(null); },
+  });
+
   const renderViewBtn = (btn) => {
-    const sel = selAct === btn.id;
-    const ac  = btn.color;
-    const sk  = shortcuts[btn.id] || "";
+    const sel        = selAct === btn.id;
+    const ac         = btn.color;
+    const sk         = shortcuts[btn.id] || "";
+    const isDragSrc  = dragSrc === btn.id;
+    const isDragOver = dragOver === btn.id && dragSrc !== btn.id;
     return (
       <button key={btn.id}
-        onClick={() => setSelAct(btn.id === selAct ? null : btn.id)}
+        {...dragEvents(btn.id)}
+        onClick={() => { if (!dragSrc) setSelAct(btn.id === selAct ? null : btn.id); }}
         style={{
-          flex:"0 0 auto", minHeight:BTN_MIN_H,
+          height:"100%", minHeight:BTN_H,
           padding:"4px 4px", width:"100%", position:"relative", boxSizing:"border-box",
-          background: sel ? ac : ac + "12",
-          border: `2px solid ${sel ? ac : ac + "44"}`,
-          borderRadius:6, cursor:"pointer", transition:"all .12s",
+          background: isDragOver ? ac+"44" : sel ? ac : ac+"12",
+          border: `2px ${isDragOver ? "dashed" : "solid"} ${isDragOver ? ac : sel ? ac : ac+"44"}`,
+          borderRadius:6, cursor: isDragSrc ? "grabbing" : "grab", transition:"all .12s",
           display:"flex", alignItems:"center", justifyContent:"center",
           boxShadow: sel ? `0 2px 6px ${ac}44` : "none",
+          opacity: isDragSrc ? 0.45 : 1,
         }}
       >
         {sk && (
@@ -192,44 +242,38 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
     );
   };
 
-  /* ── Botão modo edição — mesmo visual, clique aplica ferramenta ── */
   const renderEditBtn = (btn) => {
-    const ac        = btn.color;
-    const sk        = shortcuts[btn.id] || "";
-    const isTarget  = editTarget === btn.id;
-    const isMover   = editTool === "mover";
-    const isDragSrc = dragSrc === btn.id;
-    const isDragOver= dragOver === btn.id && dragSrc !== btn.id;
-
+    const ac         = btn.color;
+    const sk         = shortcuts[btn.id] || "";
+    const isTarget   = editTarget === btn.id;
+    const isDragSrc  = dragSrc === btn.id;
+    const isDragOver = dragOver === btn.id && dragSrc !== btn.id;
     return (
       <button key={btn.id}
-        onClick={() => handleEditClick(btn)}
-        draggable={isMover}
-        onDragStart={isMover ? () => { setDragSrc(btn.id); setEditTarget(null); } : undefined}
-        onDragOver={isMover  ? (e) => { e.preventDefault(); setDragOver(btn.id); } : undefined}
-        onDragLeave={isMover ? ()  => setDragOver(null) : undefined}
-        onDrop={isMover ? (e) => {
-          e.preventDefault();
-          if (dragSrc && dragSrc !== btn.id) swapButtons(dragSrc, btn.id);
-          setDragSrc(null); setDragOver(null);
-        } : undefined}
-        onDragEnd={isMover ? () => { setDragSrc(null); setDragOver(null); } : undefined}
+        {...dragEvents(btn.id)}
+        onClick={() => { if (!dragSrc) handleEditClick(btn); }}
         style={{
-          flex:"0 0 auto", minHeight:BTN_MIN_H,
+          height:"100%", minHeight:BTN_H,
           padding:"4px 4px", width:"100%", position:"relative", boxSizing:"border-box",
-          background: isDragOver ? ac + "44" : isTarget ? ac + "28" : ac + "12",
-          border: isDragOver
-            ? `2px dashed ${ac}`
-            : isTarget ? `2px solid ${ac}` : `2px solid ${ac}44`,
+          background: isDragOver ? ac+"44" : isTarget ? ac+"28" : ac+"12",
+          border: `2px ${isDragOver ? "dashed" : "solid"} ${isDragOver ? ac : isTarget ? ac : ac+"44"}`,
           borderRadius:6,
-          cursor: isMover ? (isDragSrc ? "grabbing" : "grab") : editTool ? "pointer" : "default",
+          cursor: isDragSrc ? "grabbing" : "grab",
           transition:"all .1s",
           display:"flex", alignItems:"center", justifyContent:"center",
           opacity: isDragSrc ? 0.45 : 1,
-          outline: isTarget && !isMover ? `2px solid ${ac}` : "none",
+          outline: isTarget ? `2px solid ${ac}` : "none",
           outlineOffset: 1,
         }}
       >
+        <span
+          onClick={(e) => { e.stopPropagation(); deleteButton(btn.id); }}
+          style={{
+            position:"absolute", top:1, left:3,
+            fontSize:10, color:"#EF4444", cursor:"pointer",
+            zIndex:2, lineHeight:1, fontWeight:"bold",
+          }}
+        >×</span>
         {sk && (
           <span style={{
             position:"absolute", top:1, right:2,
@@ -245,42 +289,56 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
     );
   };
 
-  const all   = [...col0, ...col1];
-  const s     = Math.ceil(all.length / 3);
-  const cols3 = [all.slice(0, s), all.slice(s, s * 2), all.slice(s * 2)];
+  const all       = [...col0, ...col1];
   const targetBtn = editTarget ? layout.find(b => b.id === editTarget) : null;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:4, height:"100%" }}>
 
-      {/* Dica da ferramenta ativa */}
-      {editMode && editTool && !editTarget && (
-        <div style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:600, textAlign:"center", letterSpacing:.3, flexShrink:0 }}>
-          {TOOLS.find(t => t.id === editTool)?.desc}
+      {/* Barra de controles em modo edição */}
+      {editMode && (
+        <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0, flexWrap:"wrap" }}>
+          <span style={{ flex:1, fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:600, letterSpacing:.3 }}>
+            {editTool && !editTarget && !addMode ? TOOLS.find(t => t.id === editTool)?.desc : ""}
+          </span>
+          <button onClick={saveAsDefault}
+            style={{ ...CTRL, color:"#16A34A", border:"1px solid #86EFAC", fontSize:9, padding:"1px 6px" }}>
+            PADRÃO
+          </button>
+          <button onClick={exportConfig}
+            style={{ ...CTRL, color:"#1D4ED8", border:"1px solid #93C5FD", fontSize:9, padding:"1px 6px" }}>
+            EXPORTAR
+          </button>
+          <button onClick={() => fileInputRef.current?.click()}
+            style={{ ...CTRL, color:"#7C3AED", border:"1px solid #C4B5FD", fontSize:9, padding:"1px 6px" }}>
+            IMPORTAR
+          </button>
+          <input ref={fileInputRef} type="file" accept=".json" style={{ display:"none" }} onChange={importConfig} />
         </div>
       )}
 
-      {/* ── Teste: botão par (split) ── */}
-      <div style={{ flexShrink:0, minHeight:BTN_MIN_H }}>
-        <SplitActionButton
-          posLabel="FINALIZAÇÃO POS." negLabel="FINALIZAÇÃO NEG."
-          posColor="#059669" negColor="#DC2626"
-          selected={testSel}
-          onSelectPos={() => setTestSel(s => s === "pos" ? null : "pos")}
-          onSelectNeg={() => setTestSel(s => s === "neg" ? null : "neg")}
-        />
+      {/* Grade 3 colunas */}
+      <div style={{ flex:1, minHeight:0, overflow:"auto", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gridAutoRows:BTN_H, gap:3, alignContent:"start" }}>
+        {all.map(editMode ? renderEditBtn : renderViewBtn)}
+
+        {editMode && (
+          <button
+            onClick={() => { setAddMode(a => !a); setEditTarget(null); }}
+            style={{
+              height:"100%", minHeight:BTN_H,
+              background: addMode ? "#F0FDF4" : "transparent",
+              border: `2px dashed ${addMode ? "#16A34A" : "#CBD5E1"}`,
+              borderRadius:6, cursor:"pointer",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              color: addMode ? "#16A34A" : "#94A3B8",
+              fontFamily:"'Bebas Neue'", fontSize:20,
+              transition:"all .1s",
+            }}
+          >+</button>
+        )}
       </div>
 
-      {/* ── Grade 3 colunas ── */}
-      <div style={{ flex:1, minHeight:0, overflow:"auto", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:3, alignItems:"start" }}>
-        {cols3.map((col, i) => (
-          <div key={i} style={{ display:"flex", flexDirection:"column", gap:3 }}>
-            {col.map(editMode ? renderEditBtn : renderViewBtn)}
-          </div>
-        ))}
-      </div>
-
-      {/* ── Painel contextual ── */}
+      {/* Painel contextual — editar botão existente */}
       {editMode && targetBtn && (
         <div style={{
           flexShrink:0,
@@ -297,7 +355,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
               style={{ ...CTRL, fontSize:9, padding:"1px 6px" }}>✕</button>
           </div>
 
-          {/* COR */}
           {editTool === "cor" && (
             <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center" }}>
               <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>ESCOLHA:</span>
@@ -312,7 +369,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
             </div>
           )}
 
-          {/* NOME */}
           {editTool === "nome" && (
             <div style={{ display:"flex", gap:6, alignItems:"center" }}>
               <input
@@ -332,19 +388,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
             </div>
           )}
 
-          {/* MOVER */}
-          {editTool === "mover" && (
-            <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-              <button onClick={() => moveInCol(targetBtn.id, -1)} style={CTRL}>↑ SUBIR</button>
-              <button onClick={() => moveInCol(targetBtn.id,  1)} style={CTRL}>↓ DESCER</button>
-              <button onClick={() => moveToCol(targetBtn.id, 1)}
-                style={{ ...CTRL, color:C.blue, border:`1px solid ${C.blue}` }}>→ DIREITA</button>
-              <button onClick={() => moveToCol(targetBtn.id, 0)}
-                style={{ ...CTRL, color:C.blue, border:`1px solid ${C.blue}` }}>← ESQUERDA</button>
-            </div>
-          )}
-
-          {/* ATALHO */}
           {editTool === "atalho" && (
             <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
               <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>ATALHO:</span>
@@ -387,6 +430,57 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Painel contextual — adicionar novo botão */}
+      {editMode && addMode && !targetBtn && (
+        <div style={{
+          flexShrink:0,
+          background:"#F0FDF4",
+          border:"1px solid #86EFAC",
+          borderRadius:7, padding:"8px 10px",
+          display:"flex", flexDirection:"column", gap:7,
+        }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <span style={{ fontFamily:"'Bebas Neue'", fontSize:12, color:"#16A34A", letterSpacing:.5, flex:1 }}>
+              NOVO BOTÃO
+            </span>
+            <button onClick={() => setAddMode(false)}
+              style={{ ...CTRL, fontSize:9, padding:"1px 6px" }}>✕</button>
+          </div>
+
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+            <input
+              autoFocus
+              value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") addButton(); if (e.key === "Escape") setAddMode(false); }}
+              style={{
+                flex:1, fontFamily:"'Bebas Neue'", fontSize:13, letterSpacing:1,
+                border:"1px solid #86EFAC", borderRadius:4,
+                padding:"4px 8px", outline:"none", color:"#16A34A",
+              }}
+              placeholder="Nome do botão..."
+            />
+          </div>
+
+          <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center" }}>
+            <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>COR:</span>
+            {COLOR_OPTS.map(c => (
+              <button key={c} onClick={() => setNewColor(c)} style={{
+                width:22, height:22, background:c, borderRadius:"50%",
+                border: c === newColor ? "2.5px solid #000" : "1px solid rgba(0,0,0,.15)",
+                cursor:"pointer", padding:0, flexShrink:0,
+                boxShadow: c === newColor ? `0 0 0 2px #FFF, 0 0 0 4px ${c}` : "none",
+              }}/>
+            ))}
+          </div>
+
+          <button onClick={addButton}
+            style={{ ...CTRL, background:"#16A34A", color:"#FFF", border:"none", padding:"4px 12px", fontSize:11, borderRadius:4 }}>
+            ADICIONAR
+          </button>
         </div>
       )}
     </div>
