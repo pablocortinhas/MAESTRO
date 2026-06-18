@@ -5,7 +5,7 @@ import { version as APP_VERSION } from "../package.json";
 import { C }                                   from "./constants/colors";
 import { ZONES_50 }                             from "./constants/zones";
 import { SECTORS, ALL_IDS, GOAL_MODAL_CONFIG }  from "./constants/sectors";
-import { SQUADS as SQUADS_STATIC, CAT_LIST }   from "./constants/squads";
+import { SQUADS as SQUADS_STATIC, CAT_LIST, BASE_CATS } from "./constants/squads";
 import { LOGO_B64 }                            from "./assets/base64";
 import { fmt, getMeta, download }              from "./utils/format";
 import { initSt, initZSt, mkPlayers }          from "./utils/dataInit";
@@ -288,7 +288,7 @@ function Maestro(){
   const fp=Math.round(possTime.fla/tot*100);
   const ap=100-fp;
   const toggleTimer=()=>{if(mRun)setMRun(false);else{if(possMode==="pause")setShowPM(true);setMRun(true);}};
-  const loadCat=k=>{setCatKey(k);setPlayers(mkPlayers(squads[k]||[]));setSelPl(null);setShowCat(false);};
+  const loadCat=k=>{setCatKey(k);if(k!=="BASE")setPlayers(mkPlayers(squads[k]||[]));setSelPl(null);setShowCat(false);};
 
   const register=(actId,zoneId,lx=null,ly=null)=>{
     const aid=actId||selAct, zid=zoneId;
@@ -522,18 +522,22 @@ function Maestro(){
         <Div/>
         <div style={{flexShrink:0,position:"relative"}}>
           <button onClick={()=>setShowCat(s=>!s)} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#E0E0E0",borderRadius:4,padding:"3px 10px",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,cursor:"pointer"}}>{catKey} {showCat?"▲":"▼"}</button>
-          {showCat&&<div style={{position:"fixed",top:headerH,left:14,zIndex:600,background:"#FFF",border:"1px solid #E0E0E0",borderRadius:8,overflow:"hidden",boxShadow:"0 6px 20px rgba(0,0,0,.18)",minWidth:160}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>{CAT_LIST.map(cat=><button key={cat} onClick={()=>loadCat(cat)} style={{background:cat===catKey?C.red:"transparent",border:"none",borderRight:"1px solid #E0E0E0",borderBottom:"1px solid #E0E0E0",color:cat===catKey?"#FFF":"#1A1A1A",padding:"9px 8px",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,textAlign:"center"}}>{cat}</button>)}</div></div>}
+          {showCat&&<div style={{position:"fixed",top:headerH,left:14,zIndex:600,background:"#FFF",border:"1px solid #E0E0E0",borderRadius:8,overflow:"hidden",boxShadow:"0 6px 20px rgba(0,0,0,.18)",minWidth:220}}>
+            <button onClick={()=>loadCat("BASE")} style={{display:"block",width:"100%",background:catKey==="BASE"?C.red:"#F5F5F5",border:"none",borderBottom:"1px solid #E0E0E0",color:catKey==="BASE"?"#FFF":"#1A1A1A",padding:"8px 14px",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,textAlign:"left"}}>BASE (Sub 07 — Sub 20)</button>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:"1px solid #E0E0E0"}}>
+              {BASE_CATS.map(cat=><button key={cat} onClick={()=>loadCat(cat)} style={{background:cat===catKey?C.red:"transparent",border:"none",borderRight:"1px solid #E0E0E0",borderBottom:"1px solid #E0E0E0",color:cat===catKey?"#FFF":"#1A1A1A",padding:"8px 4px",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,textAlign:"center"}}>{cat}</button>)}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+              {["Profissional","Feminino"].map(cat=><button key={cat} onClick={()=>loadCat(cat)} style={{background:cat===catKey?C.red:"transparent",border:"none",borderRight:"1px solid #E0E0E0",color:cat===catKey?"#FFF":"#1A1A1A",padding:"9px 8px",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,textAlign:"center"}}>{cat}</button>)}
+            </div>
+          </div>}
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:C.red,opacity:.8}}>FLA</span>
-          <TopB onClick={()=>setScore(s=>({...s,fla:Math.max(0,s.fla-1)}))} ch="−"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:C.red,minWidth:22,textAlign:"center",lineHeight:1}}>{score.fla}</span>
-          <TopB onClick={()=>setScore(s=>({...s,fla:s.fla+1}))} ch="+"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:"#444",padding:"0 2px"}}>×</span>
-          <TopB onClick={()=>setScore(s=>({...s,adv:s.adv+1}))} ch="+"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#DDD",minWidth:22,textAlign:"center",lineHeight:1}}>{score.adv}</span>
-          <TopB onClick={()=>setScore(s=>({...s,adv:Math.max(0,s.adv-1)}))} ch="−"/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#888",opacity:.8}}>ADV</span>
         </div>
         <Div/>

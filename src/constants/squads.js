@@ -11,6 +11,8 @@ export const CAT_LIST = [
   "Sub 07","Sub 08","Sub 09","Sub 10","Sub 11","Sub 12","Sub 13","Sub 14","Sub 15","Sub 16","Sub 17","Sub 20","Profissional","Feminino",
 ];
 
+export const BASE_CATS = CAT_LIST.filter(c => c.startsWith("Sub"));
+
 export const SQUADS = {
   "Sub 07": [
     {id:1,athleteId:"AndryXavier2019",name:"ANDRY XAVIER DE MELLO",nickname:"Andry Xavier",number:"",pos:"Atacante",photo:""},

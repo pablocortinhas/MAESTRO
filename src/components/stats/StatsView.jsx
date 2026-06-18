@@ -1,6 +1,7 @@
 import { C }          from "../../constants/colors";
 import { SECTORS }    from "../../constants/sectors";
 import GoalMapStats   from "./GoalMapStats";
+import flaEscudoImg   from "../../../imagens/Fla_Escudo.png";
 
 /* ── Linha de estatística ──────────────────────────────── */
 function StatRow({ label, val, maxVal, color }) {
@@ -112,10 +113,12 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           {/* FLA */}
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={flaEscudoImg} alt="Flamengo" style={{ height: 44, width: "auto", objectFit: "contain", flexShrink: 0 }} />
+            <div>
             <div style={{
               fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800,
-              fontStyle: "italic", fontSize: 26, color: C.red, letterSpacing: 3, lineHeight: 1,
+              fontSize: 26, color: C.red, letterSpacing: 3, lineHeight: 1,
             }}>
               FLAMENGO
             </div>
@@ -124,6 +127,7 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
               fontSize: 11, color: "#9CA3AF", letterSpacing: 2, marginTop: 3,
             }}>
               {catKey}
+            </div>
             </div>
           </div>
 
@@ -138,7 +142,7 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
           <div style={{ flex: 1, textAlign: "right" }}>
             <div style={{
               fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800,
-              fontStyle: "italic", fontSize: 26, color: "#374151", letterSpacing: 3, lineHeight: 1,
+              fontSize: 26, color: "#374151", letterSpacing: 3, lineHeight: 1,
             }}>
               ADVERSÁRIO
             </div>
