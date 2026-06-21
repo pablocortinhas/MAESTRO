@@ -36,8 +36,8 @@ export default function PossessionModal({ show, setPossMode, setShowPossModal })
             FLAMENGO
           </button>
           <button onClick={() => { setPossMode("adv"); setShowPossModal(false); }} style={{
-            background: "#EFF6FF", border: `2px solid ${C.blue}`,
-            color: C.blue, borderRadius: 7, padding: "12px",
+            background: "#F5F5F5", border: `2px solid #555`,
+            color: "#111", borderRadius: 7, padding: "12px",
             fontFamily: "'Bebas Neue'", fontSize: 16,
             letterSpacing: 2, cursor: "pointer",
           }}>

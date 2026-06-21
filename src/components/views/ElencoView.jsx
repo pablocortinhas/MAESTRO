@@ -5,7 +5,11 @@ import camisa1Img  from "../../../imagens/camisa_1.png";
 import camisaGLImg from "../../../imagens/camisa_GL.png";
 import fundo1Img   from "../../../imagens/fundo1.png";
 import fundo3Img   from "../../../imagens/fundo3.png";
-import urubuImg    from "../../../imagens/Urubu.png";
+import urubuImg    from "../../../imagens/CRF_Preto.png";
+import legendGolImg from "../../../imagens/Legends/Goleiro Julio Cesar.png";
+import legendDefImg from "../../../imagens/Legends/Defensor Junior.png";
+import legendMeiaImg from "../../../imagens/Legends/Meia Zico.png";
+import legendAtkImg from "../../../imagens/Legends/Atacante Romário.png";
 
 const D = {
   bg:     "#100e0e",
@@ -70,26 +74,28 @@ function Avatar({ player, imagensDir }) {
   );
 }
 
-function StatCard({ label, count, color, img, onClick, active }) {
+function StatCard({ label, count, img, imgStyle, onClick, active }) {
   return (
     <div onClick={onClick} style={{
       flex: 1, minWidth: 80,
-      background: active ? "#000" : D.card2,
-      border: `2px solid ${D.bdr}`,
+      background: "#FFFFFF",
+      border: `2px solid ${active ? D.red : D.bdr}`,
       borderRadius: 10,
       padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6,
       position: "relative", overflow: "hidden",
       cursor: onClick ? "pointer" : "default",
-      transition: "border-color .15s, background .15s",
+      transition: "border-color .15s",
     }}>
       {img && (
         <img src={img} alt="" style={{
           position: "absolute", right: -6, bottom: -6,
-          width: 64, height: 64, objectFit: "contain", opacity: 0.15, pointerEvents: "none",
+          width: 64, height: "auto", objectFit: "contain", opacity: 0.15, pointerEvents: "none",
+          filter: "grayscale(1)",
+          ...imgStyle,
         }} />
       )}
-      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color, lineHeight: 1 }}>{count}</div>
-      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 10,
+      <div style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color: D.red, lineHeight: 1 }}>{count}</div>
+      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 14,
         letterSpacing: 1, color: D.dim, textTransform: "uppercase" }}>{label}</div>
     </div>
   );
@@ -184,16 +190,17 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
 
       {/* Stats cards — clicáveis para filtrar */}
       <div style={{ display: "flex", gap: 8 }}>
-        <StatCard label="Total de Atletas" count={allPlayers.length}      color={activeGroup === "TODOS" ? "#FFF" : "#111"}     img={urubuImg}
-          onClick={() => setActiveGroup("TODOS")} active={activeGroup === "TODOS"} />
-        <StatCard label="Goleiros"          count={count("GOLEIROS")}      color={D.purple}
-          onClick={() => setActiveGroup("GOLEIROS")} active={activeGroup === "GOLEIROS"} />
-        <StatCard label="Defensores"        count={count("DEFENSORES")}    color={D.blue}
+        <StatCard label="Total de Atletas" count={allPlayers.length} img={urubuImg}
+          imgStyle={{ width: 44, right: 10, bottom: 8 }}
+          onClick={() => setActiveGroup("TODOS")}      active={activeGroup === "TODOS"} />
+        <StatCard label="Goleiros"   count={count("GOLEIROS")}   img={legendGolImg}
+          onClick={() => setActiveGroup("GOLEIROS")}   active={activeGroup === "GOLEIROS"} />
+        <StatCard label="Defensores" count={count("DEFENSORES")} img={legendDefImg}
           onClick={() => setActiveGroup("DEFENSORES")} active={activeGroup === "DEFENSORES"} />
-        <StatCard label="Meias"        count={count("MEIAS")}    color={D.green}
-          onClick={() => setActiveGroup("MEIAS")} active={activeGroup === "MEIAS"} />
-        <StatCard label="Atacantes"         count={count("ATACANTES")}     color={D.red}
-          onClick={() => setActiveGroup("ATACANTES")} active={activeGroup === "ATACANTES"} />
+        <StatCard label="Meias"      count={count("MEIAS")}      img={legendMeiaImg}
+          onClick={() => setActiveGroup("MEIAS")}      active={activeGroup === "MEIAS"} />
+        <StatCard label="Atacantes"  count={count("ATACANTES")}  img={legendAtkImg}
+          onClick={() => setActiveGroup("ATACANTES")}  active={activeGroup === "ATACANTES"} />
       </div>
 
       {/* Search + novo atleta */}

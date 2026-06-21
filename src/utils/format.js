@@ -1,9 +1,11 @@
 import { SECTORS } from "../constants/sectors";
 import { C }       from "../constants/colors";
 
-export const fmt = s =>
-  String(Math.floor(s / 60)).padStart(2, "0") + ":" +
-  String(s % 60).padStart(2, "0");
+export const fmt = s => {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return String(m) + ":" + String(sec).padStart(2, "0");
+};
 
 export const fmtVideo = s => {
   const h = Math.floor(s / 3600);

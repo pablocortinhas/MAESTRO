@@ -245,16 +245,32 @@ function Maestro(){
   },[]);
 
   useEffect(()=>{
-    if(mRun) mRef.current=setInterval(()=>setMTime(t=>t+1),1000);
-    else clearInterval(mRef.current);
-    return()=>clearInterval(mRef.current);
-  },[mRun]);
+    clearInterval(mRef.current);
+    if(!mRun) return ()=>clearInterval(mRef.current);
+    const vid=vRef.current;
+    if(!vid||!vid.src){
+      mRef.current=setInterval(()=>setMTime(t=>t+1),1000);
+      return ()=>clearInterval(mRef.current);
+    }
+    let prev=vid.currentTime;
+    const onUpdate=()=>{ const d=vid.currentTime-prev; if(d>0&&d<5) setMTime(t=>t+d); prev=vid.currentTime; };
+    vid.addEventListener("timeupdate",onUpdate);
+    return ()=>vid.removeEventListener("timeupdate",onUpdate);
+  },[mRun,vSrc]);
+
   useEffect(()=>{
     clearInterval(pRef.current);
-    if(mRun&&possMode==="fla") pRef.current=setInterval(()=>setPossTime(p=>({...p,fla:p.fla+1})),1000);
-    else if(mRun&&possMode==="adv") pRef.current=setInterval(()=>setPossTime(p=>({...p,adv:p.adv+1})),1000);
-    return()=>clearInterval(pRef.current);
-  },[mRun,possMode]);
+    if(possMode==="pause") return ()=>clearInterval(pRef.current);
+    const vid=vRef.current;
+    if(!vid||!vid.src){
+      pRef.current=setInterval(()=>{ if(mRun) setPossTime(p=>possMode==="fla"?{...p,fla:p.fla+1}:{...p,adv:p.adv+1}); },1000);
+      return ()=>clearInterval(pRef.current);
+    }
+    let prev=vid.currentTime;
+    const onUpdate=()=>{ const d=vid.currentTime-prev; if(d>0&&d<5) setPossTime(p=>possMode==="fla"?{...p,fla:p.fla+d}:{...p,adv:p.adv+d}); prev=vid.currentTime; };
+    vid.addEventListener("timeupdate",onUpdate);
+    return ()=>vid.removeEventListener("timeupdate",onUpdate);
+  },[mRun,possMode,vSrc]);
 
 
   /* ── Sync automático com a planilha ─────────────────────────
@@ -305,7 +321,10 @@ function Maestro(){
   const tot=possTime.fla+possTime.adv||1;
   const fp=Math.round(possTime.fla/tot*100);
   const ap=100-fp;
-  const toggleTimer=()=>{if(mRun)setMRun(false);else{if(possMode==="pause")setShowPM(true);setMRun(true);}};
+  const toggleTimer=()=>{
+    if(mRun){ setMRun(false); vRef.current?.pause(); }
+    else { if(possMode==="pause") setShowPM(true); setMRun(true); vRef.current?.play(); }
+  };
   const loadCat=k=>{setCatKey(k);if(k!=="BASE")setPlayers(mkPlayers(squads[k]||[]));setSelPl(null);setShowCat(false);};
 
   const register=(actId,zoneId,lx=null,ly=null)=>{
@@ -392,6 +411,7 @@ function Maestro(){
     setTZStats(initZSt());
     setPlayers(p=>p.map(pl=>({...pl,stats:initSt(),zStats:initZSt()})));
     setSelAct(null);
+    setScore({fla:0,adv:0});
   };
 
   const exportData=format=>{
@@ -572,8 +592,8 @@ function Maestro(){
           <span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:"#AAA",minWidth:28}}>{ap}%</span>
           {[{m:"fla",l:"FLA"},{m:"pause",l:"⏸"},{m:"adv",l:"ADV"}].map(({m,l})=>(
             <button key={m} onClick={()=>setPossMode(m)} style={{
-              background: possMode===m ? (m==="fla"?C.red : m==="adv"?"#334":"#444") : "#2A2A2A",
-              border: `1px solid ${possMode===m ? (m==="adv"?"#556":"transparent") : "#3A3A3A"}`,
+              background: possMode===m ? (m==="fla"?C.red : "#111") : "#2A2A2A",
+              border: `1px solid ${possMode===m ? (m==="fla"?C.red:"#555") : "#3A3A3A"}`,
               color: "#FFF", borderRadius:3, padding:"2px 8px",
               fontFamily:"'Bebas Neue'", fontSize:13, letterSpacing:1, cursor:"pointer",
             }}>{l}</button>
@@ -586,7 +606,7 @@ function Maestro(){
             <span style={{fontFamily:"monospace",fontSize:19,color:mRun?C.red:"#888",transition:"color .3s"}}>{fmt(mTime)}</span>
           </div>
           <button onClick={toggleTimer} style={{...lBtn(mRun),fontSize:14,padding:"3px 12px"}}>{mRun?"PAUSAR":"INICIAR"}</button>
-          <button onClick={()=>{setMRun(false);setMTime(0);setPossMode("pause");}} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#777",borderRadius:5,padding:"3px 10px",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,cursor:"pointer"}}>RESET</button>
+          <button onClick={()=>{setMRun(false);setMTime(0);setPossMode("pause");setPossTime({fla:0,adv:0});}} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#777",borderRadius:5,padding:"3px 10px",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,cursor:"pointer"}}>RESET</button>
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
@@ -727,7 +747,7 @@ function Maestro(){
                 <button onClick={()=>setHeatFilt("all")} style={{...filtBtn(heatFilt==="all",C.red),textAlign:"center"}}>TODAS AS AÇÕES</button>
                 {SECTORS.map(s=>(
                   <div key={s.id} style={{marginTop:5}}>
-                    <div style={{fontSize:9,color:C.txtM,letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:3,borderBottom:"1px solid #E0E0E0",paddingBottom:2}}>{s.label.toUpperCase()}</div>
+                    <div style={{fontSize:9,color:C.txtM,letterSpacing:2,fontFamily:"'Bebas Neue'",marginBottom:3,borderBottom:"1px solid #E0E0E0",paddingBottom:2,textAlign:"center"}}>{s.label.toUpperCase()}</div>
                     <div style={{display:"flex",flexDirection:"column",gap:2}}>
                       {s.actions.map(a=>a.type==="single"
                         ?<button key={a.id} onClick={()=>setHeatFilt(a.id)} style={{...filtBtn(heatFilt===a.id,C.red),textAlign:"center"}}>{a.label}</button>
