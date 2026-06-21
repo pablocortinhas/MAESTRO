@@ -8,7 +8,7 @@ import fundo3Img   from "../../../imagens/fundo3.png";
 import urubuImg    from "../../../imagens/Urubu.png";
 
 const D = {
-  bg:     "#FFFFFF",
+  bg:     "#100e0e",
   card:   "#F4F4F4",
   card2:  "#EBEBEB",
   bdr:    "#D4D4D4",
@@ -24,7 +24,7 @@ const D = {
 const GROUPS = {
   GOLEIROS:    { positions: ["Goleiro"],                                         color: D.purple },
   DEFENSORES:  { positions: ["Zagueiro","Lateral Direito","Lateral Esquerdo"],   color: D.blue   },
-  "MEIO-CAMP.":{ positions: ["Volante","Meia"],                                  color: D.green  },
+  "MEIAS":{ positions: ["Volante","Meia"],                                  color: D.green  },
   ATACANTES:   { positions: ["Ponta","Atacante"],                                color: D.red    },
 };
 
@@ -74,8 +74,8 @@ function StatCard({ label, count, color, img, onClick, active }) {
   return (
     <div onClick={onClick} style={{
       flex: 1, minWidth: 80,
-      background: active ? color + "22" : D.card2,
-      border: `2px solid ${active ? color : D.bdr}`,
+      background: active ? "#000" : D.card2,
+      border: `2px solid ${D.bdr}`,
       borderRadius: 10,
       padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6,
       position: "relative", overflow: "hidden",
@@ -184,14 +184,14 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
 
       {/* Stats cards — clicáveis para filtrar */}
       <div style={{ display: "flex", gap: 8 }}>
-        <StatCard label="Total de Atletas" count={allPlayers.length}      color={D.txt}    img={urubuImg}
+        <StatCard label="Total de Atletas" count={allPlayers.length}      color={activeGroup === "TODOS" ? "#FFF" : "#111"}     img={urubuImg}
           onClick={() => setActiveGroup("TODOS")} active={activeGroup === "TODOS"} />
         <StatCard label="Goleiros"          count={count("GOLEIROS")}      color={D.purple}
           onClick={() => setActiveGroup("GOLEIROS")} active={activeGroup === "GOLEIROS"} />
         <StatCard label="Defensores"        count={count("DEFENSORES")}    color={D.blue}
           onClick={() => setActiveGroup("DEFENSORES")} active={activeGroup === "DEFENSORES"} />
-        <StatCard label="Meio-Camp."        count={count("MEIO-CAMP.")}    color={D.green}
-          onClick={() => setActiveGroup("MEIO-CAMP.")} active={activeGroup === "MEIO-CAMP."} />
+        <StatCard label="Meias"        count={count("MEIAS")}    color={D.green}
+          onClick={() => setActiveGroup("MEIAS")} active={activeGroup === "MEIAS"} />
         <StatCard label="Atacantes"         count={count("ATACANTES")}     color={D.red}
           onClick={() => setActiveGroup("ATACANTES")} active={activeGroup === "ATACANTES"} />
       </div>
@@ -259,9 +259,9 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
               backgroundPosition: "center",
               backgroundColor: isEditing ? "#2A1A1A" : "transparent",
               borderRadius: 8,
-              borderTop:    `1px solid ${isEditing ? D.red : posColor + "55"}`,
-              borderRight:  `1px solid ${isEditing ? D.red : posColor + "55"}`,
-              borderBottom: `1px solid ${isEditing ? D.red : posColor + "55"}`,
+              borderTop:    `1px solid ${isEditing ? D.red : "transparent"}`,
+              borderRight:  `1px solid ${isEditing ? D.red : "transparent"}`,
+              borderBottom: `1px solid ${isEditing ? D.red : "transparent"}`,
               borderLeft:   `4px solid ${posColor}`,
               overflow: "hidden",
             }}>
@@ -328,7 +328,7 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
 
                   {(isBaseMode || (allClubMode && p._cat !== catKey)) && (
                     <span style={{
-                      background: "rgba(0,0,0,0.4)", color: "rgba(255,255,255,0.8)", fontSize: 9,
+                      background: "rgba(0,0,0,0.4)", color: "#FFF", fontSize: 9,
                       fontFamily: "'Bebas Neue'", letterSpacing: 1,
                       border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4,
                       padding: "1px 6px", flexShrink: 0,

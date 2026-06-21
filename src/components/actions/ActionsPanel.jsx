@@ -218,11 +218,13 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
         style={{
           height:"100%", minHeight:BTN_H,
           padding:"4px 4px", width:"100%", position:"relative", boxSizing:"border-box",
-          background: isDragOver ? ac+"44" : sel ? ac : ac+"12",
-          border: `2px ${isDragOver ? "dashed" : "solid"} ${isDragOver ? ac : sel ? ac : ac+"44"}`,
-          borderRadius:6, cursor: isDragSrc ? "grabbing" : "grab", transition:"all .12s",
+          background: isDragOver ? ac+"55" : sel ? ac : "#F8F8F8",
+          border: `1.5px ${isDragOver ? "dashed" : "solid"} ${sel ? ac : ac+"BB"}`,
+          borderRadius:2, cursor: isDragSrc ? "grabbing" : "pointer",
           display:"flex", alignItems:"center", justifyContent:"center",
-          boxShadow: sel ? `0 2px 6px ${ac}44` : "none",
+          boxShadow: sel
+            ? `0 2px 5px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.18)`
+            : `0 1px 2px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.7)`,
           opacity: isDragSrc ? 0.45 : 1,
         }}
       >
@@ -230,12 +232,12 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
           <span style={{
             position:"absolute", top:1, right:2,
             fontSize:7, fontFamily:"monospace",
-            color: sel ? "rgba(255,255,255,.85)" : ac+"BB",
-            background: sel ? "rgba(0,0,0,.28)" : ac+"18",
+            color: sel ? "rgba(255,255,255,.9)" : "#555",
+            background: sel ? "rgba(0,0,0,.3)" : "rgba(0,0,0,.08)",
             borderRadius:2, padding:"0 2px", lineHeight:"12px",
           }}>{sk}</span>
         )}
-        <span style={{ fontFamily:"'Bebas Neue'", fontSize:14, letterSpacing:.5, color: sel ? "#FFF" : ac, textAlign:"center", lineHeight:1.15, wordBreak:"break-word" }}>
+        <span style={{ fontFamily:"'Bebas Neue'", fontSize:14, letterSpacing:.5, color: sel ? "#FFF" : ac, textAlign:"center", lineHeight:1.15, wordBreak:"break-word", textShadow: sel ? "0 1px 2px rgba(0,0,0,.3)" : "none" }}>
           {btn.label}
         </span>
       </button>
@@ -255,15 +257,15 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
         style={{
           height:"100%", minHeight:BTN_H,
           padding:"4px 4px", width:"100%", position:"relative", boxSizing:"border-box",
-          background: isDragOver ? ac+"44" : isTarget ? ac+"28" : ac+"12",
-          border: `2px ${isDragOver ? "dashed" : "solid"} ${isDragOver ? ac : isTarget ? ac : ac+"44"}`,
-          borderRadius:6,
+          background: isDragOver ? ac+"55" : isTarget ? ac+"22" : "#F8F8F8",
+          border: `1.5px ${isDragOver ? "dashed" : "solid"} ${isTarget ? ac : ac+"BB"}`,
+          borderRadius:2,
           cursor: isDragSrc ? "grabbing" : "grab",
-          transition:"all .1s",
           display:"flex", alignItems:"center", justifyContent:"center",
           opacity: isDragSrc ? 0.45 : 1,
           outline: isTarget ? `2px solid ${ac}` : "none",
           outlineOffset: 1,
+          boxShadow: "0 1px 2px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.7)",
         }}
       >
         <span
@@ -302,15 +304,15 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
             {editTool && !editTarget && !addMode ? TOOLS.find(t => t.id === editTool)?.desc : ""}
           </span>
           <button onClick={saveAsDefault}
-            style={{ ...CTRL, color:"#16A34A", border:"1px solid #86EFAC", fontSize:9, padding:"1px 6px" }}>
+            style={{ background:"none", border:"none", padding:"0 4px", cursor:"pointer", fontSize:9, color:"#111", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
             PADRÃO
           </button>
           <button onClick={exportConfig}
-            style={{ ...CTRL, color:"#1D4ED8", border:"1px solid #93C5FD", fontSize:9, padding:"1px 6px" }}>
+            style={{ background:"none", border:"none", padding:"0 4px", cursor:"pointer", fontSize:9, color:"#111", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
             EXPORTAR
           </button>
           <button onClick={() => fileInputRef.current?.click()}
-            style={{ ...CTRL, color:"#7C3AED", border:"1px solid #C4B5FD", fontSize:9, padding:"1px 6px" }}>
+            style={{ background:"none", border:"none", padding:"0 4px", cursor:"pointer", fontSize:9, color:"#111", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
             IMPORTAR
           </button>
           <input ref={fileInputRef} type="file" accept=".json" style={{ display:"none" }} onChange={importConfig} />
@@ -318,7 +320,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
       )}
 
       {/* Grade 3 colunas */}
-      <div style={{ flex:1, minHeight:0, overflow:"auto", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gridAutoRows:BTN_H, gap:3, alignContent:"start" }}>
+      <div style={{ flex:1, minHeight:0, overflow:"auto", display:"grid", gridTemplateColumns:`repeat(auto-fill,minmax(${BTN_H*2.2}px,1fr))`, gridAutoRows:BTN_H, gap:3, alignContent:"start" }}>
         {all.map(editMode ? renderEditBtn : renderViewBtn)}
 
         {editMode && (

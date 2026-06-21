@@ -40,12 +40,18 @@ export default function GoalModal({ goalModal, setGoalModal, registerWithData, s
 
   const handleAreaClick = (e) => {
     if (ball) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect    = e.currentTarget.getBoundingClientRect();
+    const imgRect = imgRef.current.getBoundingClientRect();
+    // Dot visual position inside modal (relative to full clickable container)
     const xPct = (e.clientX - rect.left) / rect.width * 100;
     const yPct = (e.clientY - rect.top)  / rect.height * 100;
+    // Saved coords: relative to the GOAL IMAGE (0-1 on image, outside for misses)
+    // gy clamped to max 1.0 — can't finalize below the goal's bottom line
+    const gx = (e.clientX - imgRect.left) / imgRect.width;
+    const gy = Math.min((e.clientY - imgRect.top) / imgRect.height, 0.75);
     const label = getZoneLabel(e, rect, imgRef.current);
     setBall({ xPct, yPct });
-    setTimeout(() => handleSelect(label, xPct / 100, yPct / 100), 650);
+    setTimeout(() => handleSelect(label, gx, gy), 650);
   };
 
   return (

@@ -131,7 +131,6 @@ function Legend() {
   ];
   return (
     <div style={{
-      position:"absolute", bottom:10, right:10,
       background:"rgba(0,0,0,.6)", borderRadius:6,
       padding:"6px 10px", display:"flex", flexDirection:"column", gap:3,
     }}>
@@ -166,9 +165,8 @@ export default function FieldMap({ hist, filterAct }) {
 
       {/* Mapa de calor KDE */}
       <HeatCanvas hist={hist} filterAct={filterAct} />
-
-      {/* Legenda */}
-      <Legend />
     </div>
   );
 }
+
+export { Legend };

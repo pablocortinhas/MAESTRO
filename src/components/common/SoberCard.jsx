@@ -5,7 +5,9 @@ export default function SoberCard({
   onHeaderMouseDown, headerStyle = {}, centerTitle = false,
 }) {
   const headerBase = {
-    padding: "6px 12px",
+    padding: "0 12px",
+    height: 30,
+    boxSizing: "border-box",
     borderBottom: `1px solid ${C.bdr}`,
     fontFamily: "'Bebas Neue'",
     fontSize: 12,

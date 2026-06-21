@@ -146,12 +146,6 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
             }}>
               ADVERSÁRIO
             </div>
-            <div style={{
-              fontFamily: "'Rajdhani',sans-serif", fontWeight: 700,
-              fontSize: 11, color: "#9CA3AF", letterSpacing: 2, marginTop: 3,
-            }}>
-              {hist.length} eventos
-            </div>
           </div>
         </div>
 
@@ -189,20 +183,23 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
       {/* ── Mapas de gol ── */}
       {(hist.some(h => ["gol","finalPos","finalNeg"].includes(h.actId)) || score.adv > 0) && (
         <div style={{
-          background: "#111827",
+          background: "#FFF",
           border: `1px solid ${C.bdr}`,
           borderRadius: 10,
-          padding: "14px 18px 18px",
+          overflow: "hidden",
         }}>
           <div style={{
             fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 3,
-            color: "#6B7280", marginBottom: 14,
-            borderBottom: "1px solid rgba(255,255,255,.07)",
-            paddingBottom: 8,
+            color: "#000", textAlign: "center",
+            background: "#FFF",
+            padding: "8px 18px",
+            borderBottom: `1px solid ${C.bdr}`,
           }}>
             MAPAS DE GOL
           </div>
-          <GoalMapStats hist={hist} scoreAdv={score.adv} />
+          <div style={{ padding: "14px 18px 18px" }}>
+            <GoalMapStats hist={hist} scoreAdv={score.adv} />
+          </div>
         </div>
       )}
 

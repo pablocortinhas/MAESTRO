@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useLayoutEffect } from "react";
 import { C }        from "../../constants/colors";
 import golImg       from "../../../imagens/gol.png";
 
 const ATK_IDS = new Set(["gol", "finalPos", "finalNeg"]);
+const DEF_IDS = new Set(["gol_sofr", "pen_def", "bloquFinal"]);
 
 const SHOT_META = {
   gol:      { color: "#10B981", label: "Gol" },
@@ -12,28 +13,58 @@ const SHOT_META = {
 
 function GoalMap({ shots, title, subtitle, flip }) {
   const [hovered, setHovered] = useState(null);
+  const wrapRef = useRef(null);
+  const imgRef  = useRef(null);
+  const [ip, setIp] = useState(null); // image rect relative to wrapper (%)
+
+  const measure = useCallback(() => {
+    const w = wrapRef.current, im = imgRef.current;
+    if (!w || !im) return;
+    const wr = w.getBoundingClientRect(), ir = im.getBoundingClientRect();
+    if (!wr.width || !wr.height) return;
+    setIp({
+      l: (ir.left - wr.left) / wr.width  * 100,
+      t: (ir.top  - wr.top)  / wr.height * 100,
+      w: ir.width  / wr.width  * 100,
+      h: ir.height / wr.height * 100,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure]);
+
   const mapped = shots.filter(h => h.goalX != null && h.goalY != null);
+
+  // Converts image-relative (gx,gy) to absolute % within the wrapper
+  const dotPos = (gx, gy) => ({
+    left: `calc(${ip.l + gx * ip.w}% - 10px)`,
+    top:  `calc(${ip.t + gy * ip.h}% - 10px)`,
+  });
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 2.5, color: "#94A3B8" }}>{title}</div>
-        <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 600, fontSize: 10, color: "#64748B" }}>{subtitle}</div>
+        <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 2.5, color: "#000" }}>{title}</div>
+        <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 600, fontSize: 10, color: "#000" }}>{subtitle}</div>
       </div>
 
-      <div style={{
+      {/* Wrapper com margem generosa ao redor da imagem para chutes fora */}
+      <div ref={wrapRef} style={{
         position: "relative",
-        background: "#040D1E",
+        background: "#000",
         borderRadius: 8,
-        overflow: "hidden",
+        padding: "20% 14% 8%",
         transform: flip ? "scaleX(-1)" : undefined,
         boxShadow: "inset 0 0 0 1px rgba(255,255,255,.06)",
       }}>
-        <img src={golImg} draggable={false}
+        <img ref={imgRef} src={golImg} onLoad={measure} draggable={false}
           style={{ display: "block", width: "100%", height: "auto", pointerEvents: "none" }}
           alt="gol"
         />
-        {mapped.map(h => {
+        {ip && mapped.map(h => {
           const color = SHOT_META[h.actId]?.color ?? "#888";
           const isHov = hovered === h.id;
           return (
@@ -43,8 +74,7 @@ function GoalMap({ shots, title, subtitle, flip }) {
               onMouseLeave={() => setHovered(null)}
               style={{
                 position: "absolute",
-                left: `calc(${h.goalX * 100}% - 10px)`,
-                top:  `calc(${h.goalY * 100}% - 10px)`,
+                ...dotPos(h.goalX, h.goalY),
                 width: 20, height: 20,
                 borderRadius: "50%",
                 background: color,
@@ -84,8 +114,8 @@ function GoalMap({ shots, title, subtitle, flip }) {
           return (
             <div key={id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 9, fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, color: "#94A3B8" }}>
-                {m.label} <span style={{ color: m.color }}>{cnt}</span>
+              <span style={{ fontSize: 9, fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, color: "#000" }}>
+                {m.label} <span style={{ color: "#000" }}>{cnt}</span>
               </span>
             </div>
           );
@@ -96,23 +126,25 @@ function GoalMap({ shots, title, subtitle, flip }) {
 }
 
 export default function GoalMapStats({ hist, scoreAdv = 0 }) {
-  const atkShots = hist.filter(h => ATK_IDS.has(h.actId));
-  const goals    = atkShots.filter(h => h.actId === "gol").length;
+  const atkShots  = hist.filter(h => ATK_IDS.has(h.actId));
+  const defShots  = hist.filter(h => DEF_IDS.has(h.actId));
+  const goals     = atkShots.filter(h => h.actId === "gol").length;
+  const goalsSofr = Math.max(defShots.filter(h => h.actId === "gol_sofr").length, scoreAdv);
 
-  if (atkShots.length === 0 && scoreAdv === 0) return null;
+  if (atkShots.length === 0 && defShots.length === 0 && scoreAdv === 0) return null;
 
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
       <GoalMap
         shots={atkShots}
-        title="ATAQUE — FLAMENGO"
+        title="BALIZA - ADVERSÁRIO"
         subtitle={`${goals} gol${goals !== 1 ? "s" : ""} marcado${goals !== 1 ? "s" : ""} · ${atkShots.length} finalizaç${atkShots.length !== 1 ? "ões" : "ão"}`}
       />
       <div style={{ width: 1, background: "rgba(255,255,255,.08)", alignSelf: "stretch", flexShrink: 0 }} />
       <GoalMap
-        shots={[]}
-        title="DEFESA — ADVERSÁRIO"
-        subtitle={`${scoreAdv} gol${scoreAdv !== 1 ? "s" : ""} sofrido${scoreAdv !== 1 ? "s" : ""}`}
+        shots={defShots}
+        title="BALIZA - FLAMENGO"
+        subtitle={`${goalsSofr} gol${goalsSofr !== 1 ? "s" : ""} sofrido${goalsSofr !== 1 ? "s" : ""}`}
         flip
       />
     </div>

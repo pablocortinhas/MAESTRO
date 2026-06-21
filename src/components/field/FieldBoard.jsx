@@ -11,7 +11,6 @@ const CAMPOS = Object.entries(_camposGlob)
   .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
   .map(([, mod], i) => ({ id: i + 1, src: mod.default, label: `Campo ${i + 1}` }));
 
-const LS_DIM    = "maestro_dim_opacity";
 const LS_CAMPO  = "maestro_campo_idx";
 const LS_BOUNDS = "maestro_field_bounds";
 const LS_PL_SC  = "maestro_player_shortcuts";
@@ -128,10 +127,6 @@ export default function FieldBoard({
   const [dragOffset,  setDragOffset]  = useState({ x:0, y:0 });
   const [showPl,      setShowPl]      = useState(true);
   const [hoverZone,   setHoverZone]   = useState(null);
-  const [dimOpacity,  setDimOpacity]  = useState(() => {
-    try { const v = parseFloat(localStorage.getItem(LS_DIM)); return isNaN(v) ? 0.4 : Math.min(0.9, Math.max(0.05, v)); }
-    catch { return 0.4; }
-  });
   const [campoIdx, setCampoIdx] = useState(() => {
     try { const v = parseInt(localStorage.getItem(LS_CAMPO), 10); return isNaN(v) ? 0 : Math.min(v, Math.max(0, CAMPOS.length - 1)); }
     catch { return 0; }
@@ -153,7 +148,6 @@ export default function FieldBoard({
   const [campoCssW, setCampoCssW] = useState("66%");
   const [campoCssH, setCampoCssH] = useState("151%");
 
-  useEffect(() => { try { localStorage.setItem(LS_DIM,   String(dimOpacity)); } catch {} }, [dimOpacity]);
   useEffect(() => { try { localStorage.setItem(LS_CAMPO, String(campoIdx));   } catch {} }, [campoIdx]);
   useEffect(() => { try { localStorage.setItem(LS_PL_SC, JSON.stringify(plShortcuts)); } catch {} }, [plShortcuts]);
   useEffect(() => { setCampoRot(false); }, [campoIdx]);
@@ -287,38 +281,33 @@ export default function FieldBoard({
     <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
 
       {/* ── Barra de controles ── */}
-      <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
-        <button onClick={() => setShowPl(s => !s)} style={{ ...lBtn(showPl), fontSize:11, padding:"3px 9px" }}>
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+        <button onClick={() => setShowPl(s => !s)} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: showPl ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
           {showPl ? "OCULTAR" : "JOGADORES"}
         </button>
 
         {showPl && (
           <>
             <Sep/>
-            <button onClick={() => { setFixado(f=>!f); setSubMode(false); setSubTarget(null); }} style={{ ...lBtn(fixado), fontSize:11, padding:"3px 9px" }}>
+            <button onClick={() => { setFixado(f=>!f); setSubMode(false); setSubTarget(null); }} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: fixado ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               {fixado ? "DESBLOQ." : "FIXAR"}
             </button>
-            <button onClick={() => { setSubMode(s=>!s); setSubTarget(null); setAssigningSc(false); setScTarget(null); }} style={{ ...lBtn(subMode), fontSize:11, padding:"3px 9px" }}>
+            <button onClick={() => { setSubMode(s=>!s); setSubTarget(null); setAssigningSc(false); setScTarget(null); }} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: subMode ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               {subMode ? "CANCELAR" : "SUBSTITUIR"}
             </button>
-            <button onClick={() => { setAssigningSc(s=>!s); setScTarget(null); setSubMode(false); setSubTarget(null); }} style={{ ...lBtn(assigningSc), fontSize:11, padding:"3px 9px" }}>
+            <button onClick={() => { setAssigningSc(s=>!s); setScTarget(null); setSubMode(false); setSubTarget(null); }} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: assigningSc ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               {assigningSc ? "CONCLUIR" : "ATALHOS"}
             </button>
-            <button onClick={reset} style={{ background:"#F5F5F5", border:"1px solid #D4D4D4", color:"#888", borderRadius:5, padding:"3px 9px", fontFamily:"'Bebas Neue'", fontSize:11, letterSpacing:2, cursor:"pointer" }}>
+            <button onClick={reset} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color:"#888", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               RESET
             </button>
-            <button onClick={saveFormation} style={{ ...lBtn(formSaved), fontSize:11, padding:"3px 9px", ...(formSaved ? { background:"#059669", borderColor:"#059669" } : {}) }}>
+            <button onClick={saveFormation} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: formSaved ? "#059669" : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               {formSaved ? "SALVO ✓" : "SALVAR ESC."}
             </button>
             <Sep/>
-            <button onClick={() => setUniform(u => u === 1 ? 2 : 1)} style={{ ...lBtn(false), fontSize:11, padding:"3px 9px" }}>
+            <button onClick={() => setUniform(u => u === 1 ? 2 : 1)} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color:"#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               UNI {uniform === 1 ? "1" : "2"}
             </button>
-            <Sep/>
-            <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>DIM:</span>
-            <input type="range" min={0.05} max={0.9} step={0.05} value={dimOpacity}
-              onChange={e => setDimOpacity(parseFloat(e.target.value))}
-              style={{ width:52, cursor:"pointer", accentColor:C.red, flexShrink:0 }}/>
           </>
         )}
 
@@ -327,9 +316,9 @@ export default function FieldBoard({
           <>
             <Sep/>
             <div style={{ position:"relative" }} onClick={e => e.stopPropagation()}>
-              <button onClick={() => setShowCampoSel(s=>!s)} style={{ ...lBtn(showCampoSel), fontSize:11, padding:"3px 9px", display:"flex", alignItems:"center", gap:4 }}>
+              <button onClick={() => setShowCampoSel(s=>!s)} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
                 <img src={campoSrc} style={{ width:22, height:14, objectFit:"cover", borderRadius:2, border:"1px solid #D0D0D0" }} alt=""/>
-                {showCampoSel ? "▲" : "▼"}
+                <span style={{ fontSize:10, color: showCampoSel ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>{showCampoSel ? "▲" : "▼"}</span>
               </button>
               {showCampoSel && (
                 <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, zIndex:500, background:"#FFF", border:"1px solid #E0E0E0", borderRadius:8, padding:8, boxShadow:"0 6px 20px rgba(0,0,0,.16)", display:"grid", gridTemplateColumns:"repeat(3,80px)", gap:6, minWidth:272 }}>
@@ -367,17 +356,14 @@ export default function FieldBoard({
             }
             setCalibrating(c => !c);
           }}
-          style={{
-            ...lBtn(calibrating), fontSize:11, padding:"3px 9px",
-            ...(calibSaved ? { background:"#059669", borderColor:"#059669" } : {}),
-          }}
+          style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: calibSaved ? "#059669" : calibrating ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}
         >
           {calibSaved ? "SALVO ✓" : calibrating ? "SALVAR DELIMITAÇÃO" : "CALIBRAR CAMPO"}
         </button>
         {calibrating && (
           <button
             onClick={() => { setBounds(loadBounds()); }}
-            style={{ background:"#F5F5F5", border:"1px solid #D4D4D4", color:"#888", borderRadius:5, padding:"3px 9px", fontFamily:"'Bebas Neue'", fontSize:11, letterSpacing:2, cursor:"pointer" }}
+            style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color:"#888", fontFamily:"'Bebas Neue'", letterSpacing:1 }}
           >RESETAR</button>
         )}
       </div>
@@ -563,7 +549,7 @@ export default function FieldBoard({
                     cursor: assigningSc ? "pointer" : selAct ? "crosshair" : fixado ? "default" : subMode ? "pointer" : "grab",
                     zIndex: draggingId === slot.id ? 10 : 2,
                     display:"flex", flexDirection:"column", alignItems:"center", gap:1,
-                    opacity: selPl !== null && slot.player?.id != null && slot.player.id !== selPl ? dimOpacity : 1,
+                    opacity: selPl !== null && slot.player?.id != null && slot.player.id !== selPl ? 0 : 1,
                     transition:"opacity .2s",
                     filter: isScT ? "drop-shadow(0 0 6px #FFE000)" : subTarget===slot.id ? `drop-shadow(0 0 6px ${C.red})` : isSel ? `drop-shadow(0 0 5px ${C.gold})` : "drop-shadow(0 1px 3px rgba(0,0,0,.6))",
                   }}

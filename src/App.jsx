@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import fundo1Img      from "../imagens/fundo1.png";
 import wallpaperImg   from "../imagens/Flamengo_Wallpaper.png";
+import flaEscudoImg   from "../imagens/Fla_Escudo.png";
 import { version as APP_VERSION } from "../package.json";
 import { C }                                   from "./constants/colors";
 import { ZONES_50 }                             from "./constants/zones";
@@ -15,7 +16,7 @@ import SoberCard       from "./components/common/SoberCard";
 import StatCard        from "./components/common/StatCard";
 import GoalMapStats    from "./components/stats/GoalMapStats";
 import StatsView      from "./components/stats/StatsView";
-import FieldMap        from "./components/field/FieldMap";
+import FieldMap, { Legend as HeatLegend } from "./components/field/FieldMap";
 import FieldBoard      from "./components/field/FieldBoard";
 import BenchPanel      from "./components/field/BenchPanel";
 import ActionsPanel    from "./components/actions/ActionsPanel";
@@ -49,12 +50,13 @@ const CSS = `
 const LS_PANELS = "maestro_panel_layout_v3";
 //  Layout padrão: CAMPO | AÇÕES | VÍDEO (3 colunas) + HISTÓRICO sob CAMPO + RESERVAS faixa inferior
 const DEFAULT_PANELS = [
-  { id:"campo",     x:0,    y:0,    w:33,   h:68   },
-  { id:"historico", x:0,    y:68.5, w:33,   h:22   },
-  { id:"acoes",     x:33.5, y:0,    w:17.5, h:91   },
-  { id:"video",     x:51.5, y:0,    w:48.5, h:91   },
-  { id:"banco",     x:0,    y:91.5, w:100,  h:8.5  },
+  { id:"campo",     x:0,    y:0,    w:33,   h:68,  visible:true, zIndex:1 },
+  { id:"historico", x:0,    y:68.5, w:33,   h:22,  visible:true, zIndex:2 },
+  { id:"acoes",     x:33.5, y:0,    w:17.5, h:91,  visible:true, zIndex:3 },
+  { id:"video",     x:51.5, y:0,    w:48.5, h:91,  visible:true, zIndex:4 },
+  { id:"banco",     x:0,    y:91.5, w:100,  h:8.5, visible:true, zIndex:5 },
 ];
+const PANEL_LABELS = { campo:"CAMPO", historico:"HISTÓRICO", acoes:"AÇÕES", video:"VÍDEO", banco:"RESERVAS" };
 function loadPanelLayout() {
   try {
     const s = localStorage.getItem(LS_PANELS);
@@ -193,8 +195,9 @@ function Maestro(){
   const startPanelResize = (id, dir, e) => {
     e.preventDefault();
     e.stopPropagation();
+    const cursors = { e:"col-resize",w:"col-resize",s:"row-resize",n:"row-resize",se:"nwse-resize",nw:"nwse-resize",ne:"nesw-resize",sw:"nesw-resize" };
     document.body.style.userSelect = "none";
-    document.body.style.cursor = dir === "e" ? "col-resize" : dir === "s" ? "row-resize" : "nwse-resize";
+    document.body.style.cursor = cursors[dir] || "nwse-resize";
     const panel = panelLayout.find(p => p.id === id);
     const rect = analiseRef.current.getBoundingClientRect();
     const startX = e.clientX, startY = e.clientY;
@@ -204,9 +207,12 @@ function Maestro(){
       const dy = (ev.clientY - startY) / rect.height * 100;
       setPanelLayout(prev => prev.map(p => {
         if (p.id !== id) return p;
-        const nw = dir.includes("e") ? Math.max(15, Math.min(100 - ox, ow + dx)) : p.w;
-        const nh = dir.includes("s") ? Math.max(10, Math.min(100 - oy, oh + dy)) : p.h;
-        return { ...p, w: nw, h: nh };
+        let nx = ox, ny = oy, nw = ow, nh = oh;
+        if (dir.includes("e")) nw = Math.max(15, Math.min(100 - ox, ow + dx));
+        if (dir.includes("s")) nh = Math.max(10, Math.min(100 - oy, oh + dy));
+        if (dir.includes("w")) { const x2 = Math.max(0, Math.min(ox + ow - 15, ox + dx)); nw = ow + ox - x2; nx = x2; }
+        if (dir.includes("n")) { const y2 = Math.max(0, Math.min(oy + oh - 10, oy + dy)); nh = oh + oy - y2; ny = y2; }
+        return { ...p, x: nx, y: ny, w: nw, h: nh };
       }));
     };
     const onUp = () => {
@@ -217,6 +223,18 @@ function Maestro(){
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
+  };
+
+  const bringToFront = (id) => {
+    setPanelLayout(prev => {
+      const maxZ = Math.max(...prev.map(p => p.zIndex || 1));
+      if ((prev.find(p => p.id === id)?.zIndex || 1) === maxZ) return prev;
+      return prev.map(p => p.id === id ? { ...p, zIndex: maxZ + 1 } : p);
+    });
+  };
+
+  const togglePanel = (id) => {
+    setPanelLayout(prev => prev.map(p => p.id === id ? { ...p, visible: !p.visible } : p));
   };
 
   useEffect(()=>{
@@ -298,6 +316,8 @@ function Maestro(){
     if(gmCfg){setGoalModal({...gmCfg,actId:aid,zoneId:zid,x:lx,y:ly});setSelAct(null);return;}
     if(d?.openPenaltyModal){setPenaltyModal({side:d.openPenaltyModal,actId:aid,zoneId:zid,x:lx,y:ly});setSelAct(null);return;}
     regData(aid,zid,"",lx,ly);
+    setSelPl(null);
+    setSelAct(null);
   };
 
   const handleFieldClick=(lx,ly,zoneId)=>{
@@ -313,6 +333,7 @@ function Maestro(){
       regData(actId,zoneId,label,x,y);
       regData(resId,zoneId," · "+pos,x,y);
       if(result==="conv") setScore(s=>({...s,fla:s.fla+1}));
+      setSelPl(null);
     } else {
       const gk=players.find(p=>p.pos==="Goleiro");
       const prevPl=selPl;
@@ -321,7 +342,7 @@ function Maestro(){
       const resId=result==="def"?"pen_def":"gol_sofr";
       regData(resId,zoneId," · "+pos,x,y);
       if(result==="sofrido") setScore(s=>({...s,adv:s.adv+1}));
-      setSelPl(prevPl);
+      setSelPl(null);
     }
   };
 
@@ -394,6 +415,7 @@ function Maestro(){
   const navDragIdx  = useRef(null);
   const [navDragging, setNavDragging] = useState(null);
   const [navDragOver, setNavDragOver] = useState(null);
+  const [gearOpen,    setGearOpen]    = useState(false);
 
   const W = `${(100/scale).toFixed(4)}vw`;
   const H = `${(100/scale).toFixed(4)}vh`;
@@ -450,7 +472,7 @@ function Maestro(){
       };
       case "acoes": return {
         title: "AÇÕES",
-        centerTitle: true,
+        centerTitle: !editActMode,
         headerRight: (
           <div style={{display:"flex",gap:3,alignItems:"center"}}>
             {editActMode&&[
@@ -479,6 +501,7 @@ function Maestro(){
       };
       case "historico": return {
         title: <>HISTÓRICO {hist.length > 0 && <span style={{color:C.red}}>({hist.length})</span>}</>,
+        centerTitle: true,
         headerRight: (
           <div style={{display:"flex",gap:4}}>
             <button
@@ -502,11 +525,11 @@ function Maestro(){
 
 
   return(
-    <div style={{width:W,height:H,zoom:scale,overflow:"hidden",background:"#F3F4F6",color:"#1A1A1A",fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
+    <div style={{width:W,height:H,zoom:scale,overflow:"hidden",background:"#100e0e",color:"#1A1A1A",fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
       <style>{CSS}</style>
       {toast&&<div style={{position:"fixed",bottom:24,left:"50%",zIndex:9999,pointerEvents:"none",animation:"ta 1.8s ease forwards",background:"#1A1A1A",border:"2px solid "+C.red,borderRadius:7,padding:"8px 22px",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#FFF",transform:"translateX(-50%)"}}>{toast}</div>}
       <PossessionModal show={showPM} setPossMode={setPossMode} setShowPossModal={setShowPM}/>
-      <GoalModal goalModal={goalModal} setGoalModal={setGoalModal} registerWithData={(aid,zid,extra,gx,gy)=>regData(aid,zid,extra,goalModal?.x,goalModal?.y,gx,gy)} setScore={setScore}/>
+      <GoalModal goalModal={goalModal} setGoalModal={setGoalModal} registerWithData={(aid,zid,extra,gx,gy)=>{regData(aid,zid,extra,goalModal?.x,goalModal?.y,gx,gy);setSelPl(null);}} setScore={setScore}/>
       <PenaltyModal penaltyModal={penaltyModal} setPenaltyModal={setPenaltyModal} onConfirm={handlePenaltyConfirm}/>
 
       <header ref={headerRef} style={{
@@ -534,9 +557,9 @@ function Maestro(){
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:C.red,opacity:.8}}>FLA</span>
+          <img src={flaEscudoImg} alt="FLA" style={{height:22,width:"auto",objectFit:"contain",flexShrink:0}}/>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:C.red,minWidth:22,textAlign:"center",lineHeight:1}}>{score.fla}</span>
-          <span style={{fontFamily:"'Bebas Neue'",fontSize:12,color:"#444",padding:"0 2px"}}>×</span>
+          <span style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#444",padding:"0 2px",lineHeight:1}}>×</span>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#DDD",minWidth:22,textAlign:"center",lineHeight:1}}>{score.adv}</span>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:2,color:"#888",opacity:.8}}>ADV</span>
         </div>
@@ -597,6 +620,42 @@ function Maestro(){
               }}
             >{l}</button>
           ))}
+          {/* Botão OCULTAR: só visível em ANALISE */}
+          <div style={{position:"relative", visibility: view==="analise" ? "visible" : "hidden", pointerEvents: view==="analise" ? "auto" : "none"}}>
+            <button
+              onClick={() => setGearOpen(s => !s)}
+              title="Ocultar / exibir painéis"
+              style={{background:"none",border:"none",color: gearOpen ? "#FFF" : "#666",cursor:"pointer",padding:"4px 6px",lineHeight:1,display:"flex",alignItems:"center"}}
+            >
+              {gearOpen ? (
+                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                  <ellipse cx="10" cy="7" rx="9" ry="6" stroke="currentColor" strokeWidth="1.4"/>
+                  <circle cx="10" cy="7" r="2.5" fill="currentColor"/>
+                </svg>
+              ) : (
+                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                  <path d="M1 5 Q10 13 19 5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+                  <line x1="5.5" y1="10" x2="4.5" y2="12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  <line x1="10"  y1="11" x2="10"  y2="13.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  <line x1="14.5" y1="10" x2="15.5" y2="12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+              )}
+            </button>
+            {gearOpen && <>
+              <div onClick={() => setGearOpen(false)} style={{position:"fixed",inset:0,zIndex:599}}/>
+              <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:600,background:"#1A1A1A",border:"1px solid #333",borderRadius:6,padding:"10px 16px",display:"flex",flexDirection:"column",gap:6,minWidth:130}}>
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:9,letterSpacing:2,color:"#555",marginBottom:2}}>PAINÉIS DE ANÁLISE</span>
+                {panelLayout.map(panel => {
+                  const visible = panel.visible !== false;
+                  return (
+                    <button key={panel.id} onClick={() => togglePanel(panel.id)} style={{background:"none",border:"none",color: visible ? "#FFF" : "#444",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,textAlign:"left",padding:0,lineHeight:1.4}}>
+                      {PANEL_LABELS[panel.id]}
+                    </button>
+                  );
+                })}
+              </div>
+            </>}
+          </div>
         </div>
         <div style={{flex:1}}/>
       </header>
@@ -604,28 +663,37 @@ function Maestro(){
       <main style={{flex:1,overflow:"hidden",padding:"8px 10px",display:"flex",flexDirection:"column"}}>
 
         {view==="analise"&&(
-          <div ref={analiseRef} style={{flex:1,minHeight:0,position:"relative"}}>
-            {panelLayout.map(panel => {
-              const meta = getPanelMeta(panel.id);
-              return (
-                <div key={panel.id} style={{position:"absolute",left:`${panel.x}%`,top:`${panel.y}%`,width:`${panel.w}%`,height:`${panel.h}%`}}>
-                  <SoberCard
-                    title={meta.title}
-                    headerRight={meta.headerRight}
-                    centerTitle={meta.centerTitle}
-                    style={{height:"100%",...(meta.cardStyle||{})}}
-                    contentStyle={meta.contentStyle}
-                    onHeaderMouseDown={e=>startPanelMove(panel.id,e)}
-                  >{meta.content}</SoberCard>
-                  {/* Alça: borda direita (largura) */}
-                  <div onMouseDown={e=>startPanelResize(panel.id,"e",e)} style={{position:"absolute",right:-4,top:0,width:8,height:"100%",cursor:"col-resize",zIndex:10}}/>
-                  {/* Alça: borda inferior (altura) */}
-                  <div onMouseDown={e=>startPanelResize(panel.id,"s",e)} style={{position:"absolute",bottom:-4,left:0,height:8,width:"100%",cursor:"row-resize",zIndex:10}}/>
-                  {/* Alça: canto SE (largura + altura) */}
-                  <div onMouseDown={e=>startPanelResize(panel.id,"se",e)} style={{position:"absolute",right:-4,bottom:-4,width:12,height:12,cursor:"nwse-resize",zIndex:11}}/>
-                </div>
-              );
-            })}
+          <div style={{flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
+            {/* Área dos painéis */}
+            <div ref={analiseRef} style={{flex:1,minHeight:0,position:"relative",background:"#100e0e",borderRadius:6}}>
+              {panelLayout.filter(p => p.visible !== false).map(panel => {
+                const meta = getPanelMeta(panel.id);
+                return (
+                  <div key={panel.id}
+                    onMouseDown={() => bringToFront(panel.id)}
+                    style={{position:"absolute",left:`${panel.x}%`,top:`${panel.y}%`,width:`${panel.w}%`,height:`${panel.h}%`,zIndex:panel.zIndex||1}}>
+                    <SoberCard
+                      title={meta.title}
+                      headerRight={meta.headerRight}
+                      centerTitle={meta.centerTitle}
+                      style={{height:"100%",...(meta.cardStyle||{})}}
+                      contentStyle={meta.contentStyle}
+                      onHeaderMouseDown={e=>startPanelMove(panel.id,e)}
+                    >{meta.content}</SoberCard>
+                    {/* Alças: bordas */}
+                    <div onMouseDown={e=>startPanelResize(panel.id,"e",e)}  style={{position:"absolute",right:-4,top:0,width:8,height:"100%",cursor:"col-resize",zIndex:10}}/>
+                    <div onMouseDown={e=>startPanelResize(panel.id,"w",e)}  style={{position:"absolute",left:-4,top:0,width:8,height:"100%",cursor:"col-resize",zIndex:10}}/>
+                    <div onMouseDown={e=>startPanelResize(panel.id,"s",e)}  style={{position:"absolute",bottom:-4,left:0,height:8,width:"100%",cursor:"row-resize",zIndex:10}}/>
+                    <div onMouseDown={e=>startPanelResize(panel.id,"n",e)}  style={{position:"absolute",top:-4,left:0,height:8,width:"100%",cursor:"row-resize",zIndex:10}}/>
+                    {/* Alças: 4 cantos */}
+                    <div onMouseDown={e=>startPanelResize(panel.id,"se",e)} style={{position:"absolute",right:-4,bottom:-4,width:12,height:12,cursor:"nwse-resize",zIndex:11}}/>
+                    <div onMouseDown={e=>startPanelResize(panel.id,"nw",e)} style={{position:"absolute",left:-4,top:-4,width:12,height:12,cursor:"nwse-resize",zIndex:11}}/>
+                    <div onMouseDown={e=>startPanelResize(panel.id,"ne",e)} style={{position:"absolute",right:-4,top:-4,width:12,height:12,cursor:"nesw-resize",zIndex:11}}/>
+                    <div onMouseDown={e=>startPanelResize(panel.id,"sw",e)} style={{position:"absolute",left:-4,bottom:-4,width:12,height:12,cursor:"nesw-resize",zIndex:11}}/>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -636,9 +704,9 @@ function Maestro(){
           const chipBase={borderRadius:5,padding:"3px 9px",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,cursor:"pointer",border:"1px solid #D4D4D4",background:"#F5F5F5",color:C.txtM};
           const chipSel={...chipBase,background:C.red,border:`1px solid ${C.red}`,color:"#FFF"};
           return(
-          <div style={{flex:1,overflow:"hidden",display:"flex",gap:8,minHeight:0}}>
+          <div style={{flex:1,overflow:"hidden",display:"flex",gap:8,minHeight:0,position:"relative"}}>
             <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:6,justifyContent:"center",alignItems:"center"}}>
-              <SoberCard title={"MAPA DE CALOR"+(heatFilt!=="all"?" · "+getMeta(heatFilt).label:"")+(selPlayer?" · "+selPlayer.display:"")} style={{width:"78%"}}>
+              <SoberCard title={"MAPA DE CALOR"+(heatFilt!=="all"?" · "+getMeta(heatFilt).label:"")+(selPlayer?" · "+selPlayer.display:"")} centerTitle={true} style={{width:"78%"}}>
                 <FieldMap hist={mapaHist} filterAct={heatFilt}/>
               </SoberCard>
 
@@ -671,6 +739,9 @@ function Maestro(){
                 ))}
               </div>
             </SoberCard>
+            <div style={{position:"absolute",bottom:12,right:232,pointerEvents:"none"}}>
+              <HeatLegend/>
+            </div>
           </div>
         )})()}
 
