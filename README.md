@@ -6,7 +6,7 @@ Ferramenta de análise tática em tempo real para registro de ações, heatmap e
 
 ## Índice
 
-1. [O que é o Maestro](#o-que-é-o-rubromap)
+1. [O que é o Maestro](#o-que-é-o-maestro)
 2. [Pré-requisitos](#pré-requisitos)
 3. [Instalação](#instalação)
 4. [Como usar](#como-usar)
@@ -160,13 +160,13 @@ A disposição, cores e atalhos dos botões de **Ações** ficam salvos localmen
 
 **No PC de origem:**
 1. Abra o app → aba **ANÁLISE** → painel **AÇÕES** → clique **EDITAR**
-2. Clique em **EXPORTAR** → salva o arquivo `rubromap-acoes.json`
+2. Clique em **EXPORTAR** → salva o arquivo `maestro-acoes.json`
 3. Copie esse arquivo para o outro PC (pendrive, e-mail, Google Drive, etc.)
 
 **No PC de destino:**
 1. Clone o repositório e execute `npm install && npm start`
 2. Abra o app → aba **ANÁLISE** → painel **AÇÕES** → clique **EDITAR**
-3. Clique em **IMPORTAR** e selecione o arquivo `rubromap-acoes.json`
+3. Clique em **IMPORTAR** e selecione o arquivo `maestro-acoes.json`
 
 O botão **PADRÃO** (verde, em modo EDITAR) salva a configuração atual como padrão local — ela será restaurada mesmo se o app for reinstalado no mesmo PC.
 

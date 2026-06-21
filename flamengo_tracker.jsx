@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 /* ═══════════════════════════════════════════════════════════
-   RUBROMAP — Análise de Desempenho
+   MAESTRO — Análise de Desempenho
    Clube de Regatas do Flamengo
 ═══════════════════════════════════════════════════════════ */
 
@@ -172,7 +172,7 @@ const DEFAULT_LIVE_BUTTONS = [
 /* ════════════════════════════════════════════════════════════
    COMPONENTE PRINCIPAL
 ════════════════════════════════════════════════════════════ */
-export default function RubroMap(){
+export default function Maestro(){
   const [catKey,   setCatKey]   = useState("Sub 13");
   const [players,  setPlayers]  = useState(mkPlayers(SQUADS["Sub 13"]));
   const [tStats,   setTStats]   = useState(initSt());
@@ -200,7 +200,7 @@ export default function RubroMap(){
     )).flat()]
   );
   const [btnColors, setBtnColors] = useState(()=>{
-    try{ const s=localStorage.getItem("rubromap_btn_colors"); return s?JSON.parse(s):DEFAULT_BTN_COLORS; }
+    try{ const s=localStorage.getItem("maestro_btn_colors"); return s?JSON.parse(s):DEFAULT_BTN_COLORS; }
     catch(e){ return DEFAULT_BTN_COLORS; }
   });
   const [showColorEditor, setShowColorEditor] = useState(false);
@@ -209,11 +209,11 @@ export default function RubroMap(){
   const saveBtnColor=(id, color)=>{
     const next={...btnColors,[id]:color};
     setBtnColors(next);
-    try{ localStorage.setItem("rubromap_btn_colors", JSON.stringify(next)); }catch(e){}
+    try{ localStorage.setItem("maestro_btn_colors", JSON.stringify(next)); }catch(e){}
   };
   const resetBtnColors=()=>{
     setBtnColors(DEFAULT_BTN_COLORS);
-    try{ localStorage.removeItem("rubromap_btn_colors"); }catch(e){}
+    try{ localStorage.removeItem("maestro_btn_colors"); }catch(e){}
     setShowColorEditor(false);
   };
   const getBtnColor=useCallback(id=>btnColors[id]||DEFAULT_BTN_COLORS[id]||"#666",[btnColors]);
@@ -312,12 +312,12 @@ export default function RubroMap(){
     if(format==="csv"){
       const header=Object.keys(rows[0]||{}).join(",");
       const body=rows.map(r=>Object.values(r).map(v=>`"${v}"`).join(",")).join("\n");
-      download(`rubromap_${catKey.replace(" ","_")}.csv`,"text/csv",header+"\n"+body);
+      download(`maestro_${catKey.replace(" ","_")}.csv`,"text/csv",header+"\n"+body);
     } else {
       const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<partida categoria="${catKey}">\n`+
         rows.map(r=>`  <evento tempo="${r.Tempo}" jogador="${r.Jogador}" numero="${r.Numero}" acao="${r.Acao}" zona="${r.Zona}"/>`).join("\n")+
         "\n</partida>";
-      download(`rubromap_${catKey.replace(" ","_")}.xml`,"application/xml",xml);
+      download(`maestro_${catKey.replace(" ","_")}.xml`,"application/xml",xml);
     }
   };
 
@@ -532,7 +532,7 @@ export default function RubroMap(){
             style={{width:46,height:46,objectFit:"contain",
               filter:"drop-shadow(0 0 10px rgba(232,0,28,.7))"}} alt="CRF"/>
           <div>
-            <div style={{fontSize:28,letterSpacing:7,lineHeight:.88,color:C.wh}}>RUBROMAP</div>
+            <div style={{fontSize:28,letterSpacing:7,lineHeight:.88,color:C.wh}}>MAESTRO</div>
             <div style={{fontSize:8,color:C.gold,letterSpacing:2.5,
               fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>
               ANÁLISE DE DESEMPENHO

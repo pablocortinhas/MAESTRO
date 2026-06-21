@@ -158,7 +158,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = "rubromap-acoes.json";
+    a.download = "maestro-acoes.json";
     a.click();
     URL.revokeObjectURL(url);
   };
