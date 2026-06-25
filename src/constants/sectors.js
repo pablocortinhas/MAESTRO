@@ -8,6 +8,7 @@ export const SECTORS = [
   { id:"stats", label:"Estatísticas", color:"#7C3AED", actions:[
     { id:"gol",         label:"GOL",        type:"single", color:AM },
     { id:"assistencia", label:"ASSISTÊNCIA", type:"single", color:G  },
+    { id:"pen",         label:"PÊNALTI",    type:"single", color:AM },
   ]},
 
   /* ── Ações Ofensivas ────────────────────────────────────── */

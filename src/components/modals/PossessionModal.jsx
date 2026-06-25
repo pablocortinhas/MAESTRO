@@ -1,4 +1,7 @@
-import { C } from "../../constants/colors";
+import { C }      from "../../constants/colors";
+import AdvLogo    from "../common/AdvLogo";
+import flaEscudo  from "../../../imagens/Fla_Escudo.png";
+import fundo1     from "../../../imagens/fundo1.png";
 
 export default function PossessionModal({ show, setPossMode, setShowPossModal }) {
   if (!show) return null;
@@ -12,7 +15,9 @@ export default function PossessionModal({ show, setPossMode, setShowPossModal })
     >
       <div
         style={{
-          background: C.card, border: `1px solid ${C.bdr}`,
+          backgroundImage: `url(${fundo1})`, /* fundo1.png */
+          backgroundSize: "cover", backgroundPosition: "center",
+          border: `1px solid ${C.bdr}`,
           borderRadius: 10, padding: "24px 30px",
           textAlign: "center", minWidth: 260,
           boxShadow: "0 4px 20px rgba(0,0,0,.15)",
@@ -20,37 +25,34 @@ export default function PossessionModal({ show, setPossMode, setShowPossModal })
         onClick={e => e.stopPropagation()}
       >
         <div style={{
-          fontSize: 11, color: C.txtM, letterSpacing: 3,
+          fontSize: 11, color: "#FFF", letterSpacing: 3,
           fontFamily: "'Rajdhani',sans-serif",
           fontWeight: 700, marginBottom: 14,
         }}>
           QUEM ESTÁ COM A POSSE?
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <button onClick={() => { setPossMode("fla"); setShowPossModal(false); }} style={{
-            background: "#FFF0F0", border: `2px solid ${C.red}`,
-            color: C.red, borderRadius: 7, padding: "12px",
-            fontFamily: "'Bebas Neue'", fontSize: 16,
-            letterSpacing: 2, cursor: "pointer",
-          }}>
-            FLAMENGO
+          <button
+            onClick={() => { setPossMode("fla"); setShowPossModal(false); }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "12px", display:"flex", alignItems:"center", justifyContent:"center" }}
+          >
+            <img src={flaEscudo} alt="Flamengo" style={{ height: 48, width: "auto", objectFit: "contain" }}/>
           </button>
-          <button onClick={() => { setPossMode("adv"); setShowPossModal(false); }} style={{
-            background: "#F5F5F5", border: `2px solid #555`,
-            color: "#111", borderRadius: 7, padding: "12px",
-            fontFamily: "'Bebas Neue'", fontSize: 16,
-            letterSpacing: 2, cursor: "pointer",
-          }}>
-            ADVERSÁRIO
+          <button
+            onClick={() => { setPossMode("adv"); setShowPossModal(false); }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <AdvLogo height={48}/>
           </button>
         </div>
-        <button onClick={() => { setPossMode("pause"); setShowPossModal(false); }} style={{
-          marginTop: 8, background: "transparent",
-          border: `1px solid ${C.bdr}`, color: C.txtM,
-          borderRadius: 7, padding: "7px 20px",
-          fontFamily: "'Bebas Neue'", fontSize: 12,
-          letterSpacing: 2, cursor: "pointer", width: "100%",
-        }}>
+        <button
+          onClick={() => { setPossMode("pause"); setShowPossModal(false); }}
+          style={{
+            marginTop: 8, background: "none", border: "none",
+            color: "#FFF", fontFamily: "'Bebas Neue'", fontSize: 13,
+            letterSpacing: 2, cursor: "pointer", width: "100%", padding: "7px 0",
+          }}
+        >
           PULAR
         </button>
       </div>

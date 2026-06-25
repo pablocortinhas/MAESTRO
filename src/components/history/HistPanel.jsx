@@ -49,7 +49,7 @@ export default function HistPanel({ hist, onDeleteEntry, videoRef, videoDuration
                 fontFamily: "'Rajdhani',sans-serif",
                 fontWeight: 600, fontSize: 10,
               }}>
-                {h.num ? `#${h.num}` : "EQ"}
+                {h.num ? `#${h.num}` : (h.team === "adv" ? "ADV" : "FLA")}
               </span>
 
               <span

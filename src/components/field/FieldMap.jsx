@@ -149,9 +149,8 @@ export default function FieldMap({ hist, filterAct }) {
   return (
     <div style={{
       position:"relative", width:"100%",
-      aspectRatio:`${NH}/${NW}`,   /* 1543/1019 → landscape */
+      aspectRatio:`${NH}/${NW}`,
       overflow:"hidden", borderRadius:6,
-      border:"1px solid #C8C8C8",
     }}>
       {/* campo1.png (retrato) rotacionado 90° para landscape */}
       <div style={{ position:"absolute", inset:0, overflow:"hidden" }}>

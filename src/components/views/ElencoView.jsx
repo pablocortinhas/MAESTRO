@@ -102,17 +102,27 @@ function StatCard({ label, count, img, imgStyle, onClick, active }) {
 }
 
 export default function ElencoView({ players, setPlayers, catKey, loadCat, squads }) {
-  const [showCat,     setShowCat]     = useState(false);
-  const [editId,      setEditId]      = useState(null);
-  const [form,        setForm]        = useState({ name: "", nickname: "", number: "", pos: "Atacante" });
-  const [add,         setAdd]         = useState({ name: "", nickname: "", number: "", pos: "Atacante" });
-  const [showAdd,     setShowAdd]     = useState(false);
-  const [imagensDir,  setImagensDir]  = useState("");
-  const [activeGroup, setActiveGroup] = useState("TODOS");
-  const [search,      setSearch]      = useState("");
-  const [allClubMode, setAllClubMode] = useState(false);
+  const [showCat,      setShowCat]      = useState(false);
+  const [editId,       setEditId]       = useState(null);
+  const [form,         setForm]         = useState({ name: "", nickname: "", number: "", pos: "Atacante" });
+  const [add,          setAdd]          = useState({ name: "", nickname: "", number: "", pos: "Atacante" });
+  const [showAdd,      setShowAdd]      = useState(false);
+  const [imagensDir,   setImagensDir]   = useState("");
+  const [activeGroup,  setActiveGroup]  = useState("TODOS");
+  const [search,       setSearch]       = useState("");
+  const [allClubMode,  setAllClubMode]  = useState(false);
+  const [localPlayers, setLocalPlayers] = useState(players);
+  const [dirty,        setDirty]        = useState(false);
 
   useEffect(() => { window.electronAPI?.getImagensDir().then(d => d && setImagensDir(d)); }, []);
+
+  // Sincroniza o draft quando muda de categoria (não na atualização de stats)
+  useEffect(() => {
+    setLocalPlayers(players);
+    setDirty(false);
+    setEditId(null);
+    setShowAdd(false);
+  }, [catKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isBaseMode = catKey === "BASE";
 
@@ -127,8 +137,8 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
         list.map(p => ({ ...p, _cat: cat }))
       );
     }
-    return players.map(p => ({ ...p, _cat: catKey }));
-  }, [isBaseMode, allClubMode, players, squads, catKey]);
+    return localPlayers.map(p => ({ ...p, _cat: catKey }));
+  }, [isBaseMode, allClubMode, localPlayers, squads, catKey]);
 
   const filtered = useMemo(() => {
     let list = allPlayers;
@@ -156,11 +166,15 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
 
   const editKey   = p => `${p._cat || catKey}-${p.id}`;
   const startEdit = p => { setEditId(editKey(p)); setForm({ name: p.name, nickname: p.nickname || "", number: p.number || "", pos: p.pos }); };
-  const saveEdit  = () => { setPlayers(pl => pl.map(x => editKey(x) === editId ? { ...x, ...form } : x)); setEditId(null); };
-  const delP      = p => setPlayers(pl => pl.filter(x => editKey(x) !== editKey(p)));
+  const saveEdit  = () => {
+    setLocalPlayers(pl => pl.map(x => editKey(x) === editId ? { ...x, ...form } : x));
+    setEditId(null);
+    setDirty(true);
+  };
+  const delP      = p => { setLocalPlayers(pl => pl.filter(x => editKey(x) !== editKey(p))); setDirty(true); };
   const addP      = () => {
     if (!add.name.trim()) return;
-    setPlayers(p => [...p, {
+    setLocalPlayers(p => [...p, {
       id: Date.now(), athleteId: "",
       name: add.name.trim(),
       nickname: add.nickname.trim() || add.name.trim().split(" ")[0],
@@ -169,7 +183,11 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
     }]);
     setAdd({ name: "", nickname: "", number: "", pos: "Atacante" });
     setShowAdd(false);
+    setDirty(true);
   };
+
+  const saveAll    = () => { setPlayers(localPlayers); setDirty(false); };
+  const discardAll = () => { setLocalPlayers(players); setDirty(false); setEditId(null); setShowAdd(false); };
 
   const inpStyle = (w) => ({
     background: "#FFFFFF", border: `1px solid ${D.bdr}`, color: D.txt,
@@ -377,6 +395,36 @@ export default function ElencoView({ players, setPlayers, catKey, loadCat, squad
           </div>
         )}
       </div>
+
+      {/* ── Barra global de salvar / descartar ── */}
+      {dirty && !isBaseMode && (
+        <div style={{
+          position: "sticky", bottom: 0,
+          background: "#1A1A1A", border: `1px solid ${D.red}55`,
+          borderRadius: 8, padding: "10px 16px",
+          display: "flex", alignItems: "center", gap: 10,
+          boxShadow: "0 -4px 20px rgba(0,0,0,.6)",
+        }}>
+          <span style={{
+            fontFamily: "'Rajdhani',sans-serif", fontWeight: 600, fontSize: 12,
+            color: "#AAA", flex: 1,
+          }}>
+            Alterações não salvas
+          </span>
+          <button onClick={discardAll} style={{
+            background: "transparent", color: "#888",
+            border: "1px solid #555", borderRadius: 6,
+            padding: "5px 16px", cursor: "pointer",
+            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1,
+          }}>DESCARTAR</button>
+          <button onClick={saveAll} style={{
+            background: D.red, color: "#FFF",
+            border: "none", borderRadius: 6,
+            padding: "6px 20px", cursor: "pointer",
+            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1,
+          }}>SALVAR ALTERAÇÕES</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,14 +1,18 @@
 import { useState, useRef, useCallback, useLayoutEffect } from "react";
 import { C }        from "../../constants/colors";
 import golImg       from "../../../imagens/gol.png";
+import AdvLogo      from "../common/AdvLogo";
 
 const ATK_IDS = new Set(["gol", "finalPos", "finalNeg"]);
-const DEF_IDS = new Set(["gol_sofr", "pen_def", "bloquFinal"]);
+const DEF_IDS = new Set(["gol_sofr", "pen_def", "bloquFinal", "finalNeg_adv"]);
 
 const SHOT_META = {
   gol:      { color: "#10B981", label: "Gol" },
   finalPos: { color: "#3B82F6", label: "Na meta" },
   finalNeg: { color: "#EF4444", label: "Para fora" },
+  gol_sofr: { color: "#E8001C", label: "Gol sofrido" },
+  pen_def:      { color: "#F59E0B", label: "Pênalti" },
+  finalNeg_adv: { color: "#EF4444", label: "Para fora (ADV)" },
 };
 
 function GoalMap({ shots, title, subtitle, flip }) {
@@ -137,7 +141,7 @@ export default function GoalMapStats({ hist, scoreAdv = 0 }) {
     <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
       <GoalMap
         shots={atkShots}
-        title="BALIZA - ADVERSÁRIO"
+        title={<span style={{display:"flex",alignItems:"center",gap:5,justifyContent:"center"}}>BALIZA · <AdvLogo height={16}/></span>}
         subtitle={`${goals} gol${goals !== 1 ? "s" : ""} marcado${goals !== 1 ? "s" : ""} · ${atkShots.length} finalizaç${atkShots.length !== 1 ? "ões" : "ão"}`}
       />
       <div style={{ width: 1, background: "rgba(255,255,255,.08)", alignSelf: "stretch", flexShrink: 0 }} />

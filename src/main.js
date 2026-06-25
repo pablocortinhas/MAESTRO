@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, protocol } = require("electron");
 const path = require("path");
+const fs   = require("fs");
+const { Readable } = require("stream");
 
 let mainWindow  = null;
 let videoWindow = null;
@@ -16,6 +18,7 @@ function createWindow() {
     height: 860,
     minWidth: 800,
     minHeight: 600,
+    icon: path.join(__dirname, "../imagens/maestro_logo.png"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -66,10 +69,51 @@ function createVideoWindow() {
 }
 
 app.whenReady().then(() => {
-  // Serve local files via local-video:///absolute/path
-  protocol.registerFileProtocol("local-video", (req, callback) => {
-    const filePath = decodeURIComponent(req.url.slice("local-video:///".length));
-    callback({ path: filePath });
+  // Serve local video files with full range-request support (required for <video> seeking)
+  protocol.handle("local-video", async (request) => {
+    let filePath = "";
+    try {
+      filePath = decodeURIComponent(request.url.slice("local-video:///".length));
+      if (process.platform === "win32") filePath = filePath.replace(/\//g, "\\");
+
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+
+      const mimeMap = {
+        ".mp4": "video/mp4", ".mov": "video/quicktime",
+        ".avi": "video/x-msvideo", ".mkv": "video/x-matroska",
+        ".webm": "video/webm", ".m4v": "video/x-m4v",
+      };
+      const contentType = mimeMap[path.extname(filePath).toLowerCase()] || "video/mp4";
+
+      const range = request.headers.get("Range");
+      if (range) {
+        const [, s, e] = range.match(/bytes=(\d*)-(\d*)/) || [];
+        const start = s ? parseInt(s, 10) : 0;
+        const end   = e ? parseInt(e, 10) : fileSize - 1;
+        return new Response(Readable.toWeb(fs.createReadStream(filePath, { start, end })), {
+          status: 206,
+          headers: {
+            "Content-Type":   contentType,
+            "Content-Range":  `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges":  "bytes",
+            "Content-Length": String(end - start + 1),
+          },
+        });
+      }
+
+      return new Response(Readable.toWeb(fs.createReadStream(filePath)), {
+        status: 200,
+        headers: {
+          "Content-Type":   contentType,
+          "Accept-Ranges":  "bytes",
+          "Content-Length": String(fileSize),
+        },
+      });
+    } catch (e) {
+      console.error("local-video error:", filePath, e.message);
+      return new Response("Not found", { status: 404 });
+    }
   });
 
   createWindow();
@@ -97,6 +141,24 @@ app.whenReady().then(() => {
   ipcMain.handle("get-video-path", () => currentVideoPath);
 
   ipcMain.handle("get-imagens-dir", () => path.join(__dirname, "../imagens"));
+
+  ipcMain.handle("export-pdf", async () => {
+    const win = mainWindow || BrowserWindow.getFocusedWindow();
+    try {
+      const data = await win.webContents.printToPDF({ printBackground: true, landscape: true, pageSize: "A4" });
+      const result = await dialog.showSaveDialog(win, {
+        defaultPath: "maestro_relatorio.pdf",
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      if (!result.canceled && result.filePath) {
+        fs.writeFileSync(result.filePath, data);
+        return { success: true };
+      }
+      return { success: false };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  });
 
   // Lê a planilha 2026_Dados_Cadastrais_Base.xlsx em tempo real e retorna os elencos
   ipcMain.handle("load-squads-xlsx", () => {

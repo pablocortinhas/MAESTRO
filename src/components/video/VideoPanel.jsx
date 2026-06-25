@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { C }                from "../../constants/colors";
 import { getMeta, fmtVideo } from "../../utils/format";
 
@@ -14,6 +14,7 @@ export default function VideoPanel({
   playbackRate,
 }) {
   const fileInputRef = useRef(null);
+  const [videoError, setVideoError] = useState(null);
 
   /* Abre vídeo via dialog Electron (tem caminho real) ou input file (fallback) */
   const handleLoad = async () => {
@@ -21,6 +22,7 @@ export default function VideoPanel({
       const p = await window.electronAPI.openVideoFile();
       if (!p) return;
       if (videoSrc && videoSrc.startsWith("blob:")) URL.revokeObjectURL(videoSrc);
+      setVideoError(null);
       setVideoSrc("local-video:///" + p.replace(/\\/g, "/"));
     } else {
       fileInputRef.current?.click();
@@ -47,17 +49,30 @@ export default function VideoPanel({
       ) : (
         <>
           {/* ── Video element ───────────────────────────────── */}
-          <video
-            ref={videoRef}
-            src={videoSrc}
-            controls
-            style={{ width: "100%", flex: 1, minHeight: 0, borderRadius: 6, background: "#000" }}
-            onTimeUpdate={e => setVideoCurrent(e.target.currentTime)}
-            onLoadedMetadata={e => {
-              setVideoDuration(e.target.duration);
-              if (playbackRate && playbackRate !== 1) e.target.playbackRate = playbackRate;
-            }}
-          />
+          {videoError ? (
+            <div style={{ flex: 1, minHeight: 0, borderRadius: 6, background: "#1A1A1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <div style={{ color: "#E8001C", fontFamily: "'Bebas Neue'", fontSize: 14, letterSpacing: 2 }}>ERRO AO CARREGAR VÍDEO</div>
+              <div style={{ color: "#888", fontFamily: "'Rajdhani',sans-serif", fontSize: 11, textAlign: "center", maxWidth: 280 }}>{videoError}</div>
+              <button onClick={handleLoad} style={{ marginTop: 4, ...smallBtn("#E8001C") }}>TENTAR NOVAMENTE</button>
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              controls
+              style={{ width: "100%", flex: 1, minHeight: 0, borderRadius: 6, background: "#000" }}
+              onTimeUpdate={e => setVideoCurrent(e.target.currentTime)}
+              onLoadedMetadata={e => {
+                setVideoDuration(e.target.duration);
+                if (playbackRate && playbackRate !== 1) e.target.playbackRate = playbackRate;
+              }}
+              onError={e => {
+                const code = e.target.error?.code;
+                const msgs = { 1: "Carregamento abortado", 2: "Erro de rede", 3: "Erro de decodificação", 4: "Formato não suportado" };
+                setVideoError(msgs[code] || `Erro desconhecido (código ${code})`);
+              }}
+            />
+          )}
 
           {/* ── Scrubber bar ─────────────────────────────────── */}
           <ScrubBar
@@ -78,14 +93,14 @@ export default function VideoPanel({
           />
 
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={handleLoad} style={smallBtn(C.txtM)}>
+            <button onClick={handleLoad} style={smallBtn("#111")}>
               TROCAR VÍDEO
             </button>
             {window.electronAPI && (
               <button
                 onClick={() => window.electronAPI.openVideoWindow()}
                 title="Abrir vídeo em janela separada (segundo monitor)"
-                style={smallBtn(C.blue)}
+                style={smallBtn("#111")}
               >
                 ⬝ DESTACAR VÍDEO
               </button>

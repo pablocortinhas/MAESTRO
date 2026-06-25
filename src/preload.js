@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   toggleFullscreen: ()  => ipcRenderer.invoke("toggle-fullscreen"),
   getImagensDir:    ()  => ipcRenderer.invoke("get-imagens-dir"),
   loadSquadsXlsx:   ()  => ipcRenderer.invoke("load-squads-xlsx"),
+  exportPdf:        ()  => ipcRenderer.invoke("export-pdf"),
   onVideoPathChanged: (cb) => {
     const handler = (_, p) => cb(p);
     ipcRenderer.on("video-path-changed", handler);

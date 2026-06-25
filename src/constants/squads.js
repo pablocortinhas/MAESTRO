@@ -379,3 +379,20 @@ export const DEFAULT_FORMATION = [
   {id:"p9",isGK:false,x:82,y:50},
   {id:"p10",isGK:false,x:78,y:85},
 ];
+
+// Escalações padrão por categoria — usadas quando não há formação salva em localStorage
+export const CATEGORY_DEFAULT_LINEUPS = {
+  "Sub 13": [
+    { id:"p0",  x:12, y:50, playerId:4  }, // Arthur Leonardo GK
+    { id:"p1",  x:30, y:15, playerId:1  }, // Arthur Santana
+    { id:"p2",  x:28, y:38, playerId:2  }, // Enzo Gabriel
+    { id:"p3",  x:28, y:62, playerId:3  }, // Thiago
+    { id:"p4",  x:30, y:85, playerId:7  }, // João Miguel
+    { id:"p5",  x:50, y:25, playerId:8  }, // Kayo Lima
+    { id:"p6",  x:52, y:50, playerId:9  }, // Enzo Clemente
+    { id:"p7",  x:50, y:75, playerId:10 }, // Pietro Andrey
+    { id:"p8",  x:78, y:15, playerId:11 }, // Théo
+    { id:"p9",  x:82, y:50, playerId:12 }, // Bernardo Aiex
+    { id:"p10", x:78, y:85, playerId:13 }, // Gustavo Pereira
+  ],
+};

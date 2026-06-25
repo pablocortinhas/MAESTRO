@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { SECTORS } from "../../constants/sectors";
 import { C }       from "../../constants/colors";
+import flaEscudoImg from "../../../imagens/Fla_Escudo.png";
 
 const LS_LAYOUT    = "maestro_action_layout_v3";
 const LS_SHORTCUTS = "maestro_action_shortcuts";
 const LS_DEFAULT   = "maestro_action_default_v1";
 
 const COLOR_OPTS = [
-  "#059669","#DC2626","#C65100","#CA8A04","#E8001C","#374151","#1D4ED8","#7C3AED",
+  "#E8001C","#059669","#C65100","#CA8A04","#1D4ED8","#7C3AED",
+  "#374151","#0891B2","#666666","#000000","#1f0000","#6366F1",
 ];
 const NEG_COLORS = new Set(["#DC2626","#CA8A04","#E8001C","#C65100"]);
 const SHORT = {
@@ -61,7 +63,7 @@ function loadShortcuts() {
   return {};
 }
 
-export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, setEditTool }) {
+export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, setEditTool, teamSide, setTeamSide }) {
   const [layout,     setLayout]    = useState(loadLayout);
   const [shortcuts,  setShortcuts] = useState(loadShortcuts);
   const [editTarget, setEditTarget]= useState(null);
@@ -72,7 +74,16 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
   const [addMode,    setAddMode]   = useState(false);
   const [newLabel,   setNewLabel]  = useState("");
   const [newColor,   setNewColor]  = useState(COLOR_OPTS[0]);
+  const [advLogoSrc, setAdvLogoSrc]= useState(null);
   const fileInputRef               = useRef(null);
+
+  useEffect(() => {
+    if (window.electronAPI?.getImagensDir) {
+      window.electronAPI.getImagensDir().then(dir => {
+        if (dir) setAdvLogoSrc("local-video:///" + dir.replace(/\\/g, "/") + "/Escudos/adv_logo.png");
+      });
+    }
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem(LS_LAYOUT, JSON.stringify(layout)); } catch {}
@@ -138,7 +149,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
     const maxOrder = layout.length > 0 ? Math.max(...layout.map(b => b.order)) : -1;
     setLayout(prev => [...prev, {
       id: `custom_${Date.now()}`,
-      label: newLabel.trim().toUpperCase(),
+      label: newLabel.trim(),
       color: newColor,
       col: 0,
       order: maxOrder + 1,
@@ -180,7 +191,7 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
 
   const applyName = () => {
     if (!editName.trim()) return;
-    setLayout(prev => prev.map(b => b.id === editTarget ? { ...b, label: editName.trim().toUpperCase() } : b));
+    setLayout(prev => prev.map(b => b.id === editTarget ? { ...b, label: editName.trim() } : b));
     setEditTarget(null);
   };
 
@@ -297,12 +308,45 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:4, height:"100%" }}>
 
+      {/* Seletor de time */}
+      {!editMode && setTeamSide && (
+        <div style={{ display:"flex", gap:4, flexShrink:0 }}>
+          <button
+            onClick={() => setTeamSide("home")}
+            title="Flamengo"
+            style={{
+              flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+              padding:"4px 0", borderRadius:5, cursor:"pointer",
+              border:"none", background:"none",
+              opacity: teamSide==="home" ? 1 : 0.35,
+              transition:"opacity .1s",
+            }}
+          >
+            <img src={flaEscudoImg} alt="FLA" style={{ height:22, width:"auto", objectFit:"contain" }}/>
+          </button>
+          <button
+            onClick={() => setTeamSide("adv")}
+            title="Adversário"
+            style={{
+              flex:1, display:"flex", alignItems:"center", justifyContent:"center",
+              padding:"4px 0", borderRadius:5, cursor:"pointer",
+              border:"none", background:"none",
+              opacity: teamSide==="adv" ? 1 : 0.35,
+              transition:"opacity .1s",
+            }}
+          >
+            {advLogoSrc
+              ? <img src={advLogoSrc} alt="ADV" style={{ height:22, width:"auto", objectFit:"contain" }} onError={e=>e.currentTarget.style.display="none"}/>
+              : <span style={{ fontFamily:"'Bebas Neue'", fontSize:13, letterSpacing:1, color:"#555" }}>ADV</span>
+            }
+          </button>
+        </div>
+      )}
+
       {/* Barra de controles em modo edição */}
       {editMode && (
         <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0, flexWrap:"wrap" }}>
-          <span style={{ flex:1, fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:600, letterSpacing:.3 }}>
-            {editTool && !editTarget && !addMode ? TOOLS.find(t => t.id === editTool)?.desc : ""}
-          </span>
+          <span style={{ flex:1 }} />
           <button onClick={saveAsDefault}
             style={{ background:"none", border:"none", padding:"0 4px", cursor:"pointer", fontSize:9, color:"#111", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
             PADRÃO
@@ -359,7 +403,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
 
           {editTool === "cor" && (
             <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center" }}>
-              <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>ESCOLHA:</span>
               {COLOR_OPTS.map(c => (
                 <button key={c} onClick={() => setColor(targetBtn.id, c)} style={{
                   width:22, height:22, background:c, borderRadius:"50%",
@@ -392,7 +435,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
 
           {editTool === "atalho" && (
             <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-              <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>ATALHO:</span>
               {capturing ? (
                 <input
                   autoFocus readOnly placeholder="Pressione a tecla..."
@@ -468,7 +510,6 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
           </div>
 
           <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center" }}>
-            <span style={{ fontSize:9, color:C.txtM, fontFamily:"'Rajdhani',sans-serif", fontWeight:700, flexShrink:0 }}>COR:</span>
             {COLOR_OPTS.map(c => (
               <button key={c} onClick={() => setNewColor(c)} style={{
                 width:22, height:22, background:c, borderRadius:"50%",

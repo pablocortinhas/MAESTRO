@@ -119,6 +119,7 @@ export default function FieldBoard({
   assigned, setAssigned, fixado, setFixado,
   subMode, setSubMode, subTarget, setSubTarget,
   uniform, setUniform, formSaved, saveFormation, reset,
+  hidePlayersOverride = false,
 }) {
   const campoRef   = useRef(null);
   const draggedRef = useRef(false);
@@ -196,9 +197,11 @@ export default function FieldBoard({
     return () => window.removeEventListener("click", close);
   }, [showCampoSel]);
 
+  const playersVisible = showPl && !hidePlayersOverride;
+
   /* ── Drag ── */
   const onPlayerMouseDown = (e, slotId) => {
-    if (!showPl) return;
+    if (!playersVisible) return;
     if (assigningSc) return; // não arrastar em modo de atalho
     if (selAct && !subMode) return; // não arrastar em modo de registro
     if (subMode) { setSubTarget(slotId); return; }
@@ -286,7 +289,7 @@ export default function FieldBoard({
           {showPl ? "OCULTAR" : "JOGADORES"}
         </button>
 
-        {showPl && (
+        {playersVisible && (
           <>
             <Sep/>
             <button onClick={() => { setFixado(f=>!f); setSubMode(false); setSubTarget(null); }} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: fixado ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
@@ -298,10 +301,7 @@ export default function FieldBoard({
             <button onClick={() => { setAssigningSc(s=>!s); setScTarget(null); setSubMode(false); setSubTarget(null); }} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: assigningSc ? C.red : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               {assigningSc ? "CONCLUIR" : "ATALHOS"}
             </button>
-            <button onClick={reset} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color:"#888", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
-              RESET
-            </button>
-            <button onClick={saveFormation} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: formSaved ? "#059669" : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
+<button onClick={saveFormation} style={{ background:"none", border:"none", padding:"0 2px", cursor:"pointer", fontSize:11, color: formSaved ? "#059669" : "#444", fontFamily:"'Bebas Neue'", letterSpacing:1 }}>
               {formSaved ? "SALVO ✓" : "SALVAR ESC."}
             </button>
             <Sep/>
@@ -531,7 +531,7 @@ export default function FieldBoard({
         })()}
 
         {/* Jogadores */}
-        {showPl && (
+        {playersVisible && (
           <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:4 }}>
             {assigned.map(slot => {
               const isSel  = slot.player?.id != null && slot.player.id === selPl;

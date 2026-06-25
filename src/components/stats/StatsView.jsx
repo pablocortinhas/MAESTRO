@@ -2,6 +2,7 @@ import { C }          from "../../constants/colors";
 import { SECTORS }    from "../../constants/sectors";
 import GoalMapStats   from "./GoalMapStats";
 import flaEscudoImg   from "../../../imagens/Fla_Escudo.png";
+import AdvLogo        from "../common/AdvLogo";
 
 /* ── Linha de estatística ──────────────────────────────── */
 function StatRow({ label, val, maxVal, color }) {
@@ -59,7 +60,7 @@ function StatsSection({ sector, tStats }) {
       <div style={{
         padding: "10px 18px",
         borderBottom: `1px solid ${C.bdr}`,
-        display: "flex", alignItems: "center", gap: 10,
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
         background: "#FAFBFC",
       }}>
         <div style={{ width: 3, height: 18, background: C.red, borderRadius: 2, flexShrink: 0 }} />
@@ -83,12 +84,73 @@ function StatsSection({ sector, tStats }) {
   );
 }
 
+/* ── Relatório imprimível ───────────────────────────────── */
+function PrintReport({ hist, tStats, score, catKey, possTime }) {
+  const tot = (possTime?.fla ?? 0) + (possTime?.adv ?? 0) || 1;
+  const fp  = Math.round((possTime?.fla ?? 0) / tot * 100);
+  const ap  = 100 - fp;
+  return (
+    <div className="print-report" style={{ fontFamily: "'Bebas Neue',sans-serif", padding: 32, color: "#111", background: "#FFF" }}>
+      <div style={{ borderBottom: "3px solid #E8001C", paddingBottom: 12, marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+        <div>
+          <div style={{ fontSize: 28, letterSpacing: 3 }}>MAESTRO — RELATÓRIO DE JOGO</div>
+          <div style={{ fontSize: 14, color: "#666", letterSpacing: 2 }}>{catKey}</div>
+        </div>
+        <div style={{ fontSize: 42, letterSpacing: 4 }}>
+          <span style={{ color: "#E8001C" }}>{score.fla}</span>
+          <span style={{ color: "#AAA", margin: "0 8px" }}>×</span>
+          <span>{score.adv}</span>
+        </div>
+      </div>
+      {(possTime?.fla ?? 0) + (possTime?.adv ?? 0) > 0 && (
+        <div style={{ marginBottom: 20, fontSize: 13, letterSpacing: 1 }}>
+          POSSE DE BOLA — FLAMENGO: {fp}% · ADVERSÁRIO: {ap}%
+        </div>
+      )}
+      {SECTORS.map(sector => {
+        const rows = [];
+        sector.actions.forEach(a => {
+          if (a.type === "single") rows.push({ label: a.label, fla: tStats[a.id] || 0 });
+          else {
+            rows.push({ label: `${a.label} — ${a.posLabel}`, fla: tStats[a.posId] || 0 });
+            rows.push({ label: `${a.label} — ${a.negLabel}`, fla: tStats[a.negId] || 0 });
+          }
+        });
+        return (
+          <div key={sector.id} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, letterSpacing: 2, borderBottom: "1px solid #E8001C", paddingBottom: 4, marginBottom: 8, color: "#E8001C" }}>{sector.label.toUpperCase()}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 32px" }}>
+              {rows.map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, letterSpacing: 1, borderBottom: "1px solid #EEE", paddingBottom: 2 }}>
+                  <span>{r.label}</span>
+                  <span style={{ fontWeight: 700 }}>{r.fla}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ marginTop: 24, fontSize: 11, color: "#AAA", letterSpacing: 1, borderTop: "1px solid #EEE", paddingTop: 8 }}>
+        {hist.length} evento{hist.length !== 1 ? "s" : ""} registrado{hist.length !== 1 ? "s" : ""} · Gerado por Maestro
+      </div>
+    </div>
+  );
+}
+
 /* ── Vista principal de Estatísticas ────────────────────── */
 export default function StatsView({ hist, tStats, score, catKey, exportData, possTime }) {
   const tot = (possTime?.fla ?? 0) + (possTime?.adv ?? 0) || 1;
   const fp  = Math.round((possTime?.fla ?? 0) / tot * 100);
   const ap  = 100 - fp;
   const hasPoss = (possTime?.fla ?? 0) + (possTime?.adv ?? 0) > 0;
+
+  const exportPdf = async () => {
+    if (window.electronAPI?.exportPdf) {
+      await window.electronAPI.exportPdf();
+    } else {
+      window.print();
+    }
+  };
 
   return (
     <div style={{
@@ -139,13 +201,8 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
           </div>
 
           {/* ADV */}
-          <div style={{ flex: 1, textAlign: "right" }}>
-            <div style={{
-              fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800,
-              fontSize: 26, color: "#374151", letterSpacing: 3, lineHeight: 1,
-            }}>
-              ADVERSÁRIO
-            </div>
+          <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+            <AdvLogo height={40}/>
           </div>
         </div>
 
@@ -219,18 +276,20 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
         </span>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => exportData("csv")} style={{
-            background: C.red, border: "none", color: "#FFF",
-            borderRadius: 7, padding: "6px 20px",
-            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.5, cursor: "pointer",
-            boxShadow: `0 2px 8px ${C.red}44`,
+            background: "none", border: "none", color: "#111",
+            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.5, cursor: "pointer", padding: "2px 0",
           }}>EXPORTAR CSV</button>
           <button onClick={() => exportData("xml")} style={{
-            background: "transparent", border: `1px solid ${C.bdr}`, color: C.txtM,
-            borderRadius: 7, padding: "6px 20px",
-            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.5, cursor: "pointer",
+            background: "none", border: "none", color: "#111",
+            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.5, cursor: "pointer", padding: "2px 0",
           }}>EXPORTAR XML</button>
+          <button onClick={exportPdf} style={{
+            background: "none", border: "none", color: "#111",
+            fontFamily: "'Bebas Neue'", fontSize: 13, letterSpacing: 1.5, cursor: "pointer", padding: "2px 0",
+          }}>EXPORTAR PDF</button>
         </div>
       </div>
+      <PrintReport hist={hist} tStats={tStats} score={score} catKey={catKey} possTime={possTime}/>
     </div>
   );
 }

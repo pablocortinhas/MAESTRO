@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DEFAULT_FORMATION } from "../constants/squads";
+import { DEFAULT_FORMATION, CATEGORY_DEFAULT_LINEUPS } from "../constants/squads";
 
 const LS_FORM = cat => `maestro_formation_${cat}`;
 const BENCH_ORDER = ["Goleiro","Lateral Direito","Zagueiro","Lateral Esquerdo","Volante","Meia","Ponta","Atacante"];
@@ -17,10 +17,10 @@ function applyFormation(players, catKey) {
   const base = buildAssigned(players);
   try {
     const raw = localStorage.getItem(LS_FORM(catKey));
-    if (!raw) return base;
-    const saved = JSON.parse(raw);
+    const source = raw ? JSON.parse(raw) : (CATEGORY_DEFAULT_LINEUPS[catKey] || null);
+    if (!source) return base;
     return base.map(slot => {
-      const s = saved.find(x => x.id === slot.id);
+      const s = source.find(x => x.id === slot.id);
       if (!s) return slot;
       return { ...slot, x: s.x, y: s.y, player: s.playerId != null ? (players.find(p => p.id === s.playerId) || slot.player) : null };
     });
