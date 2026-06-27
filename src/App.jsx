@@ -51,9 +51,9 @@ const CSS = `
   button:focus-visible{outline:2px solid #E8001C;outline-offset:1px}
   @media print{
     body > #root > *:not(.print-report){display:none!important}
-    .print-report{display:block!important;position:static!important;zoom:1!important}
+    .print-report{position:static!important;width:100%!important;visibility:visible!important;pointer-events:auto!important;top:0!important;left:0!important;z-index:auto!important}
   }
-  .print-report{display:none}
+  .print-report{position:fixed;top:-99999px;left:0;width:900px;visibility:hidden;pointer-events:none;z-index:-1;background:#FFF}
 `;
 
 const LS_PANELS = "maestro_panel_layout_v3";
@@ -79,6 +79,98 @@ function loadPanelLayout() {
 
 function Div(){return <div style={{width:1,height:22,background:"#2A2A2A",flexShrink:0}}/>;}
 function TopB({onClick,ch}){return <button onClick={onClick} style={{background:"#2A2A2A",border:"1px solid #3A3A3A",color:"#999",borderRadius:3,padding:"0 5px",cursor:"pointer",fontSize:14,lineHeight:"18px",fontFamily:"monospace"}}>{ch}</button>;}
+
+const REGISTERED_TEAMS = [
+  { name: "Grêmio",         logo: "gremio_logo.png"       },
+  { name: "Fluminense",     logo: "fluminense_logo.png"   },
+  { name: "Vasco",          logo: "vasco_logo.png"        },
+  { name: "Botafogo",       logo: "botafogo_logo.png"     },
+  { name: "Madureira",      logo: "madureira_logo.png"    },
+  { name: "Campo Grande",   logo: "campogrande_logo.png"  },
+  { name: "Sampaio Corrêa", logo: "sampaeocorrea_logo.png"},
+  { name: "Volta Redonda",  logo: "voltaredonda_logo.png" },
+];
+
+function AdvRenameModal({ advName, advLogo, onSave, onClose }) {
+  const [val, setVal] = useState(advName);
+  const [selLogo, setSelLogo] = useState(advLogo);
+  const [logoSrcs, setLogoSrcs] = useState({});
+  const [bgSrc, setBgSrc] = useState(null);
+
+  useEffect(() => {
+    if (window.electronAPI?.getImagensDir) {
+      window.electronAPI.getImagensDir().then(dir => {
+        if (!dir) return;
+        const base = "local-video:///" + dir.replace(/\\/g, "/");
+        setBgSrc(base + "/fundo1.png");
+        const escudos = base + "/Escudos/";
+        const srcs = {};
+        REGISTERED_TEAMS.forEach(t => { srcs[t.logo] = escudos + t.logo; });
+        setLogoSrcs(srcs);
+      });
+    }
+  }, []);
+
+  const handleTeam = (team) => { setVal(team.name); setSelLogo(team.logo); };
+  const handleSave = () => onSave({ name: val.trim() || "Adversário", logo: selLogo });
+
+  const btnBase = {
+    flex:1, border:"none", borderRadius:6, padding:"8px",
+    fontFamily:"'Bebas Neue'", fontSize:14, letterSpacing:2, cursor:"pointer",
+    background:"#E8001C", color:"#000",
+  };
+
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9200,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        borderRadius:12, padding:"22px 24px", boxShadow:"0 8px 32px rgba(0,0,0,.28)",
+        display:"flex", flexDirection:"column", gap:14, minWidth:340,
+        backgroundImage: bgSrc ? `url("${bgSrc}")` : undefined,
+        backgroundColor: "#FFF",
+        backgroundSize:"cover", backgroundPosition:"center",
+      }}>
+        <div style={{fontFamily:"'Bebas Neue'",fontSize:15,letterSpacing:3,color:"#FFF",textAlign:"center"}}>ADVERSÁRIO</div>
+
+        {/* Times cadastrados — tamanho fixo e uniforme */}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
+          {REGISTERED_TEAMS.map(team => {
+            const isSel = selLogo === team.logo && val === team.name;
+            return (
+              <button key={team.logo} onClick={()=>handleTeam(team)} style={{
+                width:90, height:90,
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6,
+                borderRadius:8, cursor:"pointer",
+                border:`2px solid ${isSel?"#E8001C":"#E5E7EB"}`,
+                background: isSel?"#FFF5F5":"#FAFAFA",
+                transition:"all .15s", flexShrink:0,
+              }}>
+                {logoSrcs[team.logo]
+                  ? <img src={logoSrcs[team.logo]} alt={team.name} style={{height:44,width:44,objectFit:"contain"}} onError={e=>e.currentTarget.style.display="none"}/>
+                  : <div style={{height:44,width:44,borderRadius:"50%",background:"#E5E7EB"}}/>
+                }
+                <span style={{fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1.2,color:isSel?"#E8001C":"#374151",textAlign:"center",lineHeight:1}}>{team.name.toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{borderTop:"1px solid rgba(0,0,0,.12)",paddingTop:12,display:"flex",flexDirection:"column",gap:8}}>
+          <span style={{fontFamily:"'Rajdhani',sans-serif",fontSize:11,fontWeight:700,color:"#FFF",letterSpacing:1}}>OU DIGITE UM NOME</span>
+          <input autoFocus value={val} onChange={e=>{setVal(e.target.value);setSelLogo("adv_logo.png");}}
+            onKeyDown={e=>{if(e.key==="Enter")handleSave();if(e.key==="Escape")onClose();}}
+            style={{fontFamily:"'Rajdhani',sans-serif",fontSize:16,fontWeight:600,padding:"8px 12px",border:"1px solid #333",borderRadius:6,outline:"none",color:"#E8001C",background:"#000"}}
+            placeholder="Adversário"
+          />
+        </div>
+
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={handleSave} style={btnBase}>SALVAR</button>
+          <button onClick={onClose}   style={btnBase}>CANCELAR</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ── Popup standalone de vídeo (janela secundária) ──────── */
 function VideoPopup() {
@@ -158,6 +250,10 @@ function Maestro(){
   const [teamSide,    setTeamSide]    =useState("home");
   const [penSimple,   setPenSimple]   =useState(null);
   const [penaltyModal,setPenaltyModal]=useState(null);
+  const [advName, setAdvName] = useState("Adversário");
+  const [advLogo, setAdvLogo] = useState("adv_logo.png");
+  const [advRenameModal, setAdvRenameModal] = useState(false);
+  const [periodMarkers, setPeriodMarkers] = useState({t1:null,t2:null,p1:null,p2:null});
   const vRef      = useRef(null);
   const [vSrc,  setVSrc]  = useState(null);
   const [vCur,  setVCur]  = useState(0);
@@ -399,14 +495,14 @@ function Maestro(){
     const isAdv=teamSide==="adv";
     const cfg=isAdv
       ? {
-          conv:{ actId:"gol_sofr",     title:"PÊNALTI SOFRIDO — ONDE FOI?",   ballColor:"vermelha", addScore:"away" },
-          def: { actId:"pen_def",      title:"PÊNALTI DEFENDIDO — ONDE FOI?", ballColor:"verde",    addScore:null   },
-          perd:{ actId:"finalNeg_adv", title:"PÊNALTI PERDIDO — ONDE FOI?",   ballColor:"vermelha", addScore:null   },
+          conv:{ actId:"gol_sofr",     title:"PÊNALTI SOFRIDO — ONDE FOI?",   ballColor:"vermelha", addScore:"away", isPen:true },
+          def: { actId:"pen_def",      title:"PÊNALTI DEFENDIDO — ONDE FOI?", ballColor:"verde",    addScore:null,   isPen:true },
+          perd:{ actId:"finalNeg_adv", title:"PÊNALTI PERDIDO — ONDE FOI?",   ballColor:"vermelha", addScore:null,   isPen:true },
         }[result]
       : {
-          conv:{ actId:"gol",      title:"PÊNALTI CONVERTIDO — ONDE FOI?", ballColor:"verde",    addScore:"home" },
-          def: { actId:"finalPos", title:"PÊNALTI DEFENDIDO — ONDE FOI?",  ballColor:"verde",    addScore:null   },
-          perd:{ actId:"finalNeg", title:"PÊNALTI PERDIDO — ONDE FOI?",    ballColor:"vermelha", addScore:null   },
+          conv:{ actId:"gol",      title:"PÊNALTI CONVERTIDO — ONDE FOI?", ballColor:"verde",    addScore:"home", isPen:true },
+          def: { actId:"finalPos", title:"PÊNALTI DEFENDIDO — ONDE FOI?",  ballColor:"verde",    addScore:null,   isPen:true },
+          perd:{ actId:"finalNeg", title:"PÊNALTI PERDIDO — ONDE FOI?",    ballColor:"vermelha", addScore:null,   isPen:true },
         }[result];
     setPenSimple(null);
     setGoalModal({...cfg, zoneId, x, y});
@@ -424,7 +520,7 @@ function Maestro(){
     return meta;
   };
 
-  const regData=(aid,zid,extraLabel="",lxIn=null,lyIn=null,goalXIn=null,goalYIn=null)=>{
+  const regData=(aid,zid,extraLabel="",lxIn=null,lyIn=null,goalXIn=null,goalYIn=null,isPen=false)=>{
     const zL=ZONES_50.find(z=>z.id===zid);
     const fx = lxIn ?? (zL ? zL.cx : 0.5);
     const fy = lyIn ?? (zL ? zL.cy : 0.5);
@@ -437,14 +533,15 @@ function Maestro(){
     if(!isAdvTeam&&selPl) setPlayers(p=>p.map(x=>x.id!==selPl?x:{...x,stats:{...x.stats,[aid]:x.stats[aid]+1},zStats:{...x.zStats,[zid]:{...x.zStats[zid],[aid]:x.zStats[zid][aid]+1}}}));
     const meta=getActMeta(aid);
     setHist(p=>[{id:Date.now(),time:t,
-      player:        pl?.athleteId || pl?.name || (isAdvTeam ? "Adversário" : "Flamengo"),
-      playerDisplay: pl?.nickname  || pl?.name?.split(" ")?.[0] || (isAdvTeam ? "Adversário" : "Flamengo"),
+      player:        pl?.athleteId || pl?.name || (isAdvTeam ? advName : "Flamengo"),
+      playerDisplay: pl?.nickname  || pl?.name?.split(" ")?.[0] || (isAdvTeam ? advName : "Flamengo"),
       num:pl?.number||null,label:meta.label+extraLabel,color:meta.color,
       zone:zL?.name||"—",actId:aid,zoneId:zid,playerId:pid,
       team:teamSide,
       videoTime:vt,videoEndTime:null,
       x:fx, y:fy,
       goalX:goalXIn, goalY:goalYIn,
+      isPen: isPen||false,
     },...p.slice(0,299)]);
     setFlashZ(zid);setToast(meta.label);
     setTimeout(()=>setFlashZ(null),700);setTimeout(()=>setToast(null),1800);
@@ -551,7 +648,7 @@ function Maestro(){
             ))}
           </div>
         ),
-        content: <VideoPanel videoRef={vRef} videoSrc={vSrc} setVideoSrc={setVSrc} videoCurrent={vCur} setVideoCurrent={setVCur} videoDuration={vDur} setVideoDuration={setVDur} hist={hist} setHist={setHist} playbackRate={playbackRate}/>,
+        content: <VideoPanel videoRef={vRef} videoSrc={vSrc} setVideoSrc={setVSrc} videoCurrent={vCur} setVideoCurrent={setVCur} videoDuration={vDur} setVideoDuration={setVDur} hist={hist} setHist={setHist} playbackRate={playbackRate} periodMarkers={periodMarkers} setPeriodMarkers={setPeriodMarkers}/>,
       };
       case "acoes": return {
         title: "AÇÕES",
@@ -580,7 +677,7 @@ function Maestro(){
             >{editActMode?"CONCLUIR":"EDITAR"}</button>
           </div>
         ),
-        content: <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} editTool={editTool} setEditTool={setEditTool} teamSide={teamSide} setTeamSide={side=>{setTeamSide(side);if(side==="adv")setSelPl(null);}}/>,
+        content: <ActionsPanel selAct={selAct} setSelAct={setSelAct} editMode={editActMode} editTool={editTool} setEditTool={setEditTool} teamSide={teamSide} setTeamSide={side=>{setTeamSide(side);if(side==="adv")setSelPl(null);}} advLogo={advLogo}/>,
       };
       case "historico": return {
         title: <>HISTÓRICO {hist.length > 0 && <span style={{color:C.red}}>({hist.length})</span>}</>,
@@ -612,9 +709,10 @@ function Maestro(){
       <style>{CSS}</style>
       {toast&&<div style={{position:"fixed",bottom:24,left:"50%",zIndex:9999,pointerEvents:"none",animation:"ta 1.8s ease forwards",background:"#1A1A1A",border:"2px solid "+C.red,borderRadius:7,padding:"8px 22px",fontFamily:"'Bebas Neue'",fontSize:18,letterSpacing:2,color:"#FFF",transform:"translateX(-50%)"}}>{toast}</div>}
       <PossessionModal show={showPM} setPossMode={setPossMode} setShowPossModal={setShowPM}/>
-      <GoalModal goalModal={goalModal} setGoalModal={setGoalModal} registerWithData={(aid,zid,extra,gx,gy)=>{regData(aid,zid,extra,goalModal?.x,goalModal?.y,gx,gy);setSelPl(null);}} setScore={setScore}/>
+      <GoalModal goalModal={goalModal} setGoalModal={setGoalModal} registerWithData={(aid,zid,extra,gx,gy)=>{regData(aid,zid,extra,goalModal?.x,goalModal?.y,gx,gy,goalModal?.isPen);setSelPl(null);}} setScore={setScore}/>
       <PenaltyModal penaltyModal={penaltyModal} setPenaltyModal={setPenaltyModal} onConfirm={handlePenaltyConfirm}/>
       <PenSimpleModal show={!!penSimple} onConfirm={handlePenSimple} onClose={()=>setPenSimple(null)}/>
+      {advRenameModal&&<AdvRenameModal advName={advName} advLogo={advLogo} onSave={({name,logo})=>{setAdvName(name);setAdvLogo(logo);setAdvRenameModal(false);}} onClose={()=>setAdvRenameModal(false)}/>}
 
       <header ref={headerRef} style={{
         background:"#0A0A0A",
@@ -645,7 +743,7 @@ function Maestro(){
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:C.red,minWidth:22,textAlign:"center",lineHeight:1}}>{score.fla}</span>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#888",padding:"0 2px",lineHeight:1}}>×</span>
           <span style={{fontFamily:"'Bebas Neue'",fontSize:24,color:"#DDD",minWidth:22,textAlign:"center",lineHeight:1}}>{score.adv}</span>
-          <AdvLogo height={20}/>
+          <button onClick={()=>setAdvRenameModal(true)} title="Renomear adversário" style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center"}}><AdvLogo height={20} logoFile={advLogo}/></button>
         </div>
         <Div/>
         <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
@@ -657,7 +755,7 @@ function Maestro(){
           {[
             {m:"fla", content:<img src={flaEscudoImg} alt="FLA" style={{height:16,width:"auto",objectFit:"contain"}}/>},
             {m:"pause", content:"⏸"},
-            {m:"adv", content:<AdvLogo height={16}/>},
+            {m:"adv", content:<AdvLogo height={16} logoFile={advLogo}/>},
           ].map(({m,content})=>(
             <button key={m} onClick={()=>setPossMode(m)} style={{
               background: possMode===m ? (m==="fla"?C.red : "#111") : "#2A2A2A",
@@ -795,6 +893,8 @@ function Maestro(){
           const selPlayer=playerFilt?mapaPlayers.find(p=>p.id===playerFilt):null;
           const chipBase={borderRadius:5,padding:"3px 9px",fontFamily:"'Bebas Neue'",fontSize:11,letterSpacing:1,cursor:"pointer",border:"1px solid #D4D4D4",background:"#F5F5F5",color:C.txtM};
           const chipSel={...chipBase,background:C.red,border:`1px solid ${C.red}`,color:"#FFF"};
+          const heatBtn={background:"#111",border:"none",borderRadius:4,cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:1,color:"#FFF",textAlign:"center",padding:"4px 6px",width:"100%"};
+          const heatBtnSel={...heatBtn,background:C.red};
           const filterLabel=heatFilt!=="all"?` · ${getMeta(heatFilt).label}`:"";
           // Para o adversário, "gol" (Flamengo) mapeia para "gol_sofr"
           const ADV_FILTER_MAP={"gol":"gol_sofr"};
@@ -830,25 +930,25 @@ function Maestro(){
               <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:4}}>
                 <FieldMap hist={advHist} filterAct={advFilt}/>
                 <div style={{display:"flex",alignItems:"center",gap:5}}>
-                  <AdvLogo height={16}/>
+                  <AdvLogo height={16} logoFile={advLogo}/>
                   <span style={{fontFamily:"'Bebas Neue'",fontSize:13,letterSpacing:2,color:"#FFF"}}>
-                    {"ADVERSÁRIO"+(advFilt!=="all"?` · ${getMeta(advFilt).label}`:"")}
+                    {advName.toUpperCase()+(advFilt!=="all"?` · ${getMeta(advFilt).label}`:"")}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* ── Painel de filtros ── */}
-            <SoberCard title="FILTRAR" centerTitle={true} style={{width:200,flexShrink:0,background:"transparent",border:"none",boxShadow:"none"}} headerStyle={{background:"transparent",borderBottom:"none",color:"#FFF"}} contentStyle={{overflowY:"auto"}}>
+            <SoberCard title="FILTRAR" centerTitle={true} style={{width:200,flexShrink:0,background:"transparent",border:"none",boxShadow:"none"}} headerStyle={{background:"transparent",borderBottom:"none",color:"#FFF",fontSize:20,letterSpacing:3}} contentStyle={{overflowY:"auto"}}>
               <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                <button onClick={()=>setHeatFilt("all")} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,color:heatFilt==="all"?C.red:"#FFF",textAlign:"center",padding:"2px 0"}}>TODAS AS AÇÕES</button>
+                <button onClick={()=>setHeatFilt("all")} style={heatFilt==="all"?heatBtnSel:heatBtn}>TODAS AS AÇÕES</button>
                 {SECTORS.map(s=>(
                   <div key={s.id}>
                     <div style={{display:"flex",flexDirection:"column",gap:2}}>
                       {s.actions.map(a=>a.type==="single"
-                        ?<button key={a.id} onClick={()=>setHeatFilt(a.id)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,color:heatFilt===a.id?C.red:"#FFF",textAlign:"center",padding:"2px 0",width:"100%"}}>{a.label}</button>
-                        :[<button key={a.posId} onClick={()=>setHeatFilt(a.posId)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,color:heatFilt===a.posId?C.red:"#FFF",textAlign:"center",padding:"2px 0",width:"100%"}}>{a.label}: {a.posLabel}</button>,
-                          <button key={a.negId} onClick={()=>setHeatFilt(a.negId)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"'Bebas Neue'",fontSize:14,letterSpacing:1,color:heatFilt===a.negId?C.red:"#FFF",textAlign:"center",padding:"2px 0",width:"100%"}}>{a.label}: {a.negLabel}</button>]
+                        ?<button key={a.id} onClick={()=>setHeatFilt(a.id)} style={heatFilt===a.id?heatBtnSel:heatBtn}>{a.label}</button>
+                        :[<button key={a.posId} onClick={()=>setHeatFilt(a.posId)} style={heatFilt===a.posId?heatBtnSel:heatBtn}>{a.label}: {a.posLabel}</button>,
+                          <button key={a.negId} onClick={()=>setHeatFilt(a.negId)} style={heatFilt===a.negId?heatBtnSel:heatBtn}>{a.label}: {a.negLabel}</button>]
                       )}
                     </div>
                   </div>
@@ -864,7 +964,7 @@ function Maestro(){
 
         {view==="stats"&&(
           <div style={{flex:1,overflow:"auto",padding:"0 2px",backgroundImage:`url(${fundo1Img})`,backgroundSize:"cover",backgroundPosition:"center"}}>
-            <StatsView hist={hist} tStats={tStats} score={score} catKey={catKey} exportData={exportData} possTime={possTime}/>
+            <StatsView hist={hist} tStats={tStats} score={score} catKey={catKey} exportData={exportData} possTime={possTime} advName={advName} advLogo={advLogo}/>
           </div>
         )}
 

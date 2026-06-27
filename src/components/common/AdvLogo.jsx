@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 
-export default function AdvLogo({ height = 22, style = {} }) {
+export default function AdvLogo({ height = 22, style = {}, logoFile = "adv_logo.png" }) {
   const [src, setSrc] = useState(null);
   const [err, setErr] = useState(false);
 
   useEffect(() => {
+    setErr(false);
     if (window.electronAPI?.getImagensDir) {
       window.electronAPI.getImagensDir().then(dir => {
-        if (dir) setSrc("local-video:///" + dir.replace(/\\/g, "/") + "/Escudos/adv_logo.png");
+        if (dir) setSrc("local-video:///" + dir.replace(/\\/g, "/") + "/Escudos/" + logoFile);
       });
     }
-  }, []);
+  }, [logoFile]);
 
   if (src && !err) {
     return (

@@ -63,7 +63,7 @@ function loadShortcuts() {
   return {};
 }
 
-export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, setEditTool, teamSide, setTeamSide }) {
+export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, setEditTool, teamSide, setTeamSide, advLogo = "adv_logo.png" }) {
   const [layout,     setLayout]    = useState(loadLayout);
   const [shortcuts,  setShortcuts] = useState(loadShortcuts);
   const [editTarget, setEditTarget]= useState(null);
@@ -80,10 +80,10 @@ export default function ActionsPanel({ selAct, setSelAct, editMode, editTool, se
   useEffect(() => {
     if (window.electronAPI?.getImagensDir) {
       window.electronAPI.getImagensDir().then(dir => {
-        if (dir) setAdvLogoSrc("local-video:///" + dir.replace(/\\/g, "/") + "/Escudos/adv_logo.png");
+        if (dir) setAdvLogoSrc("local-video:///" + dir.replace(/\\/g, "/") + "/Escudos/" + advLogo);
       });
     }
-  }, []);
+  }, [advLogo]);
 
   useEffect(() => {
     try { localStorage.setItem(LS_LAYOUT, JSON.stringify(layout)); } catch {}

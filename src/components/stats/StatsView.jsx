@@ -138,7 +138,7 @@ function PrintReport({ hist, tStats, score, catKey, possTime }) {
 }
 
 /* ── Vista principal de Estatísticas ────────────────────── */
-export default function StatsView({ hist, tStats, score, catKey, exportData, possTime }) {
+export default function StatsView({ hist, tStats, score, catKey, exportData, possTime, advName = "Adversário", advLogo = "adv_logo.png" }) {
   const tot = (possTime?.fla ?? 0) + (possTime?.adv ?? 0) || 1;
   const fp  = Math.round((possTime?.fla ?? 0) / tot * 100);
   const ap  = 100 - fp;
@@ -201,8 +201,16 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
           </div>
 
           {/* ADV */}
-          <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
-            <AdvLogo height={40}/>
+          <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
+            <div style={{ textAlign: "right" }}>
+              <div style={{
+                fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800,
+                fontSize: 26, color: "#374151", letterSpacing: 3, lineHeight: 1,
+              }}>
+                {advName.toUpperCase()}
+              </div>
+            </div>
+            <AdvLogo height={44} logoFile={advLogo}/>
           </div>
         </div>
 
@@ -255,7 +263,7 @@ export default function StatsView({ hist, tStats, score, catKey, exportData, pos
             MAPAS DE GOL
           </div>
           <div style={{ padding: "14px 18px 18px" }}>
-            <GoalMapStats hist={hist} scoreAdv={score.adv} />
+            <GoalMapStats hist={hist} scoreAdv={score.adv} advName={advName} />
           </div>
         </div>
       )}
