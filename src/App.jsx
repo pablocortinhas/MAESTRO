@@ -452,6 +452,10 @@ function Maestro(){
     if(gmCfg){
       if(aid==="gol"&&teamSide==="adv"){
         setGoalModal({...gmCfg,addScore:"away",title:"GOL DO ADVERSÁRIO",ballColor:"vermelha",actId:"gol_sofr",zoneId:zid,x:lx,y:ly});
+      } else if(aid==="finalPos"&&teamSide==="adv"){
+        setGoalModal({...gmCfg,title:"FINALIZAÇÃO CERTA DO ADV.",actId:"bloquFinal",zoneId:zid,x:lx,y:ly});
+      } else if(aid==="finalNeg"&&teamSide==="adv"){
+        setGoalModal({...gmCfg,title:"FINALIZAÇÃO ERRADA DO ADV.",actId:"finalNeg_adv",zoneId:zid,x:lx,y:ly});
       } else {
         setGoalModal({...gmCfg,actId:aid,zoneId:zid,x:lx,y:ly});
       }
@@ -720,7 +724,6 @@ function Maestro(){
         flexShrink:0,borderBottom:"1px solid #2A2A2A",position:"relative",
       }}>
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-          <img src={maestroLogoImg} alt="Maestro" style={{height:28,width:"auto",objectFit:"contain"}}/>
           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontStyle:"italic",fontSize:22,letterSpacing:3,color:"#FFF",lineHeight:1,textTransform:"uppercase"}}>MAESTRO</span>
           <span style={{fontFamily:"'Oswald',sans-serif",fontWeight:500,fontSize:9,color:"#AAA",alignSelf:"flex-end",marginBottom:2,letterSpacing:1}}>v{APP_VERSION}</span>
         </div>

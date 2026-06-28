@@ -11,8 +11,9 @@ const ATK_META = [
 ];
 const DEF_META = [
   { id: "gol_sofr",     color: "#E8001C", label: "Gol sofrido" },
+  { id: "bloquFinal",   color: "#3B82F6", label: "Na meta" },
   { id: "pen_def",      color: "#F59E0B", hidden: true },
-  { id: "finalNeg_adv", color: "#EF4444", label: "Para fora" },
+  { id: "finalNeg_adv", color: "#6B7280", label: "Para fora" },
 ];
 
 // Penalty shot colors by actId — used for any shot where isPen=true
@@ -219,7 +220,7 @@ export default function GoalMapStats({ hist, scoreAdv = 0, advName = "Adversári
         shots={defShots}
         meta={DEF_META}
         title="BALIZA - FLAMENGO"
-        subtitle={`${goalsSofr} gol${goalsSofr !== 1 ? "s" : ""} sofrido${goalsSofr !== 1 ? "s" : ""}`}
+        subtitle={`${goalsSofr} gol${goalsSofr !== 1 ? "s" : ""} sofrido${goalsSofr !== 1 ? "s" : ""} · ${defShots.length} finalizaç${defShots.length !== 1 ? "ões" : "ão"}`}
         flip
         penBreakdown={defPenBreakdown}
       />
